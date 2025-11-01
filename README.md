@@ -1,6 +1,6 @@
 # WanBlendr
 WanBlendr: WAN load balancing on OpenWrt using nftables only (no iptables)
-
+⚠️ WanBlendr is authored and maintained by me. Parts of the source are intentionally withheld for now because the project is undergoing active testing and validation.
 
 # Complete Corresponding Source (CCS) for my OpenWrt-based firmware
 
