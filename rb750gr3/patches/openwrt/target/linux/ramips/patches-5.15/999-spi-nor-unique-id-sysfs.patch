@@ -1,0 +1,111 @@
+--- a/drivers/mtd/spi-nor/core.c
++++ b/drivers/mtd/spi-nor/core.c
+@@ -15,7 +15,7 @@
+ #include <linux/math64.h>
+ #include <linux/sizes.h>
+ #include <linux/slab.h>
+-
++#include <linux/sysfs.h>
+ #include <linux/mtd/mtd.h>
+ #include <linux/of_platform.h>
+ #include <linux/sched/task_stack.h>
+@@ -3321,6 +3321,63 @@ static int spi_nor_create_write_dirmap(struct spi_nor *nor)
+ 	return PTR_ERR_OR_ZERO(nor->dirmap.wdesc);
+ }
+ 
++/* ===================== SPI-NOR Unique ID sysfs ===================== */
++/*
++ * Expose flash UID via:
++ *   /sys/bus/spi/devices/spiX.Y/unique_id
++ *
++ * Send RDUID (0x4B) with 4 dummy bytes, read 8 bytes (Winbond/MXIC default).
++ * Change spi_nor_uid_len or dummy bytes if your chip differs.
++ */
++
++static int spi_nor_uid_len = 8;   /* default UID length */
++
++static ssize_t unique_id_show(struct device *dev,
++			      struct device_attribute *attr, char *buf)
++{
++	u8 rx[16] = { 0 };
++	int ret;
++	struct spi_mem *spimem = dev_get_drvdata(dev);
++	struct spi_nor *nor;
++
++	if (!spimem)
++		return -ENODEV;
++
++	nor = spi_mem_get_drvdata(spimem);
++	if (!nor)
++		return -ENODEV;
++
++	/* RDUID op: 0x4B, no address, 4 dummy bytes, read spi_nor_uid_len bytes */
++	{
++		struct spi_mem_op op = SPI_MEM_OP(
++			SPI_MEM_OP_CMD(0x4b, 1),          /* opcode, buswidth=1 */
++			SPI_MEM_OP_ADDR(0, 0, 0),         /* ?? ?????: nbytes=0, value=0, buswidth=0 ?? 1 */
++			SPI_MEM_OP_DUMMY(4, 1),           /* 4 dummy bytes ??? ?? ???? */
++			SPI_MEM_OP_DATA_IN(spi_nor_uid_len, rx, 1)
++		);
++
++		ret = spi_mem_exec_op(spimem, &op);
++		if (ret)
++			return ret;
++	}
++
++	/* Uppercase HEX, no spaces, newline at end */
++	return sysfs_emit(buf, "%*phN\n", spi_nor_uid_len, rx);
++}
++
++static DEVICE_ATTR_RO(unique_id);
++
++static struct attribute *spi_nor_uid_attrs[] = {
++	&dev_attr_unique_id.attr,
++	NULL,
++};
++
++static const struct attribute_group spi_nor_uid_group = {
++	.attrs = spi_nor_uid_attrs,
++};
++/* =================== /SPI-NOR Unique ID sysfs ====================== */
++
++
+ static int spi_nor_probe(struct spi_mem *spimem)
+ {
+ 	struct spi_device *spi = spimem->spi;
+@@ -3340,6 +3397,11 @@ static int spi_nor_probe(struct spi_mem *spimem)
+ 
+ 	nor->spimem = spimem;
+ 	nor->dev = &spi->dev;
++
++	/* === unique_id sysfs hook === */
++	dev_set_drvdata(&spimem->spi->dev, spimem);
++	/* === /unique_id sysfs hook === */
++
+ 	spi_nor_set_flash_node(nor, spi->dev.of_node);
+ 
+ 	spi_mem_set_drvdata(spimem, nor);
+@@ -3390,6 +3452,13 @@ static int spi_nor_probe(struct spi_mem *spimem)
+ 	if (ret)
+ 		return ret;
+ 
++	{
++		int __ret = sysfs_create_group(&spimem->spi->dev.kobj, &spi_nor_uid_group);
++		if (__ret)
++			dev_warn(&spimem->spi->dev,
++				"unique_id sysfs create failed: %d\n", __ret);
++	}		
++
+ 	return mtd_device_register(&nor->mtd, data ? data->parts : NULL,
+ 				   data ? data->nr_parts : 0);
+ }
+@@ -3398,6 +3467,9 @@ static int spi_nor_remove(struct spi_mem *spimem)
+ {
+ 	struct spi_nor *nor = spi_mem_get_drvdata(spimem);
+ 
++	/* remove unique_id sysfs */
++	sysfs_remove_group(&spimem->spi->dev.kobj, &spi_nor_uid_group);
++
+ 	spi_nor_restore(nor);
+ 
+ 	/* Clean up MTD stuff. */
