@@ -88,7 +88,7 @@ They are separate programs (mere aggregation) and are not derived from GPL code.
 
    ```bash
    
-	# WanBlendr v1.0
+	# WanBlendr v3
 	# SPDX-License-Identifier: GPL-2.0-only
 	# SPDX-FileCopyrightText: © 2025 Abdulkader Alrezej <abdulkader.alrezej@gmail.com> (Facebook: https://www.facebook.com/abdulkader.alrezej)
 	
@@ -98,7 +98,7 @@ They are separate programs (mere aggregation) and are not derived from GPL code.
 		option retries_down '3'
 		option retries_up '3'
 		option buckets '100'
-		option equalize_active '1'
+		option equalize_active '0'
 	
 	config wan 'wan1'
 		option ifname 'wan1'
