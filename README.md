@@ -22,7 +22,7 @@ The goal is to comply with free/open-source licenses (especially **GPLv2**) and 
 
 ## 💬 Join our Facebook Group
 Have questions or want to share your experience with others?  
-👉 [Join the Facebook Page](https://www.facebook.com/share/1ELjfY5Y1b/)
+👉 [Join the Facebook Page](https://www.facebook.com/groups/techtechtech1)
 
 ---
 
