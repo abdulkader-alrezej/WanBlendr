@@ -87,7 +87,7 @@ They are separate programs (mere aggregation) and are not derived from GPL code.
 
 ## Firmware Downloads
 
-| MikroTik ** hAP ac² - RB5009 - RB760iGS ** | sysupgrade (SquashFS) | [⬇️ Download](https://github.com/abdulkader-alrezej/WanBlendr/releases/download/WanBlendr32/WanBlendr_v32_15-11-2025_0943PM_All_.zip) |
+| MikroTik ** hAP ac² - RB5009 - RB760iGS - KT-708 KT-704 ** | sysupgrade (SquashFS) | [⬇️ Download](https://github.com/abdulkader-alrezej/WanBlendr/releases/download/WanBlendr32/WanBlendr_v32_15-11-2025_0943PM_All_.zip) |
 
 ---
 
