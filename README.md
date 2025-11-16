@@ -3,6 +3,14 @@ WanBlendr: WAN load balancing on OpenWrt using nftables only (no iptables)
 
 ⚠️ WanBlendr is authored and maintained by me. Parts of the source are intentionally withheld for now because the project is undergoing active testing and validation.
 
+---
+
+## Firmware Downloads
+
+| MikroTik ** hAP ac² - RB5009 - RB760iGS - KT-708 KT-704 ** | sysupgrade (SquashFS) | [⬇️ Download](https://github.com/abdulkader-alrezej/WanBlendr/releases/download/WanBlendr32/WanBlendr_v32_15-11-2025_0943PM_All_.zip) |
+
+---
+
 # Complete Corresponding Source (CCS) for my OpenWrt-based firmware
 
 **WAN Belndr**
@@ -80,14 +88,6 @@ They are separate programs (mere aggregation) and are not derived from GPL code.
    ./scripts/feeds install bsdtar irqbalance unzip micropython-mbedtls micropython-lib
    ./scripts/feeds update -a
    ./scripts/feeds install -a
-
----
-
----
-
-## Firmware Downloads
-
-| MikroTik ** hAP ac² - RB5009 - RB760iGS - KT-708 KT-704 ** | sysupgrade (SquashFS) | [⬇️ Download](https://github.com/abdulkader-alrezej/WanBlendr/releases/download/WanBlendr32/WanBlendr_v32_15-11-2025_0943PM_All_.zip) |
 
 ---
 
