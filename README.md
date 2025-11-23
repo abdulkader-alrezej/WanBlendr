@@ -96,35 +96,72 @@ They are separate programs (mere aggregation) and are not derived from GPL code.
 
    ```bash
    
-	# WanBlendr v3
-	# SPDX-License-Identifier: GPL-2.0-only
-	# SPDX-FileCopyrightText: © 2025 Abdulkader Alrezej <abdulkader.alrezej@gmail.com> (Facebook: https://www.facebook.com/abdulkader.alrezej)
+# WanBlendr v3.5.1
+# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: © 2025 Abdulkader Alrezej <abdulkader.alrezej@gmail.com> (Facebook: https://www.facebook.com/abdulkader.alrezej)
 	
-	config wanblendr 'globals'
-		option lan_if 'p5'
-		option interval '5'
-		option retries_down '3'
-		option retries_up '3'
-		option buckets '100'
-		option equalize_active '0'
-	
-	config wan 'wan1'
-		option ifname 'wan1'
-		option table '201'
-		option mark '0xC9'
-		option weight '50'
-		option probe_ip '8.8.4.4'
-	
-	config wan 'wan2'
-		option ifname 'wan2'
-		option table '202'
-		option mark '0xCA'
-		option weight '50'
-		option probe_ip '8.8.4.4'
-	
-	config policy
-		option src '192.168.6.0/24'
-		option wans 'wan2'
+
+config globals 'globals'
+	option interval '60'
+	option retries_down '2'
+	option retries_up '1'
+	option sticky '1'
+	option sticky_timeout '600'
+	option default_policy 'balanced'
+	option flush_conntrack '1'
+
+config wan 'wan1'
+	option ifname 'wan1'
+	option table '201'
+	option mark '0xC9'
+	list track_ip '8.8.4.4'
+
+config wan 'wan2'
+	option ifname 'wan2'
+	option table '202'
+	option mark '0xCA'
+	list track_ip '8.8.4.4'
+
+config wan 'wan3'
+	option ifname 'wan3'
+	option table '203'
+	option mark '0xCB'
+	list track_ip '8.8.4.4'
+
+config wan 'wan4'
+	option ifname 'wan4'
+	option table '204'
+	option mark '0xCC'
+	list track_ip '8.8.4.4'
+
+config member 'm_wan1'
+	option interface 'wan1'
+	option weight '1'
+
+config member 'm_wan2'
+	option interface 'wan2'
+	option weight '1'
+
+config member 'm_wan3'
+	option interface 'wan3'
+	option weight '1'
+
+config member 'm_wan4'
+	option interface 'wan4'
+	option weight '1'
+
+config policy 'balanced'
+	option comment 'Default: equal split across all WANs'
+	list members 'm_wan1'
+	list members 'm_wan2'
+	list members 'm_wan3'
+	list members 'm_wan4'
+
+config rule 'default_all'
+	option src '0.0.0.0/0'
+	option dest '0.0.0.0/0'
+	option use_policy 'balanced'
+
 
    ```
 
