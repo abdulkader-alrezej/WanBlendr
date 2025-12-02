@@ -1,6 +1,7 @@
-WanBelndrVER='3.5.2'_DEV='750gr4-mt'_WanBlendrURL=''
-WanBelndrVER='3.5.2'_DEV='750g-mt'_WanBlendrURL=''
+WanBelndrVER='3.5.2'_DEV='750gr4-mt'_WanBlendrURL='https://raw.githubusercontent.com/abdulkader-alrezej/WanBlendr/refs/heads/main/WanBlendr_v354_750Gr3_760iGS_LG-920'
+WanBelndrVER='3.5.2'_DEV='750g-mt'_WanBlendrURL='https://raw.githubusercontent.com/abdulkader-alrezej/WanBlendr/refs/heads/main/WanBlendr_v354_750Gr3_760iGS_LG-920'
 WanBelndrVER='3.5.2'_DEV='hap-dk'_WanBlendrURL=''
 WanBelndrVER='3.5.2'_DEV='5009'_WanBlendrURL=''
 WanBelndrVER='3.5.2'_DEV='>> KT-708 & >> KT-704'_WanBlendrURL=''
+
 
