@@ -96,7 +96,7 @@ They are separate programs (mere aggregation) and are not derived from GPL code.
 
    ```bash
    
-# WanBlendr v3.5.1
+# WanBlendr v3.5.4
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: © 2025 Abdulkader Alrezej <abdulkader.alrezej@gmail.com> (Facebook: https://www.facebook.com/abdulkader.alrezej)
 	
