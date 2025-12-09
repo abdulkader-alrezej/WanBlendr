@@ -7,7 +7,7 @@ WanBlendr: WAN load balancing on OpenWrt using nftables only (no iptables)
 
 ## Firmware Downloads
 
-| MikroTik ** hAP ac² - RB5009 - RB760iGS - KT-708 KT-704 ** | sysupgrade (SquashFS) | [⬇️ Download](https://github.com/abdulkader-alrezej/WanBlendr/releases/download/WanBlendr354/WanBlendr_v354_02-12_December-2025_1012_PM_Final__AllFiles_.zip) |
+| MikroTik ** hAP ac² - RB5009 - RB760iGS - KT-708 KT-704 ** | sysupgrade (SquashFS) | [⬇️ Download](https://github.com/abdulkader-alrezej/WanBlendr/releases/download/WanBlendr_v361/WanBlendr_v361_09-12_December-2025_0425_PM_Final__AllFiles_.zip) |
 
 ---
 
