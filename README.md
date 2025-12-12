@@ -96,7 +96,7 @@ They are separate programs (mere aggregation) and are not derived from GPL code.
 
    ```bash
    
-# WanBlendr v3.5.4
+# WanBlendr v3.6.1
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: © 2025 Abdulkader Alrezej <abdulkader.alrezej@gmail.com> (Facebook: https://www.facebook.com/abdulkader.alrezej)
 	
@@ -105,8 +105,8 @@ config globals 'globals'
 	option interval '60'
 	option retries_down '2'
 	option retries_up '1'
-	option sticky '1'
-	option sticky_timeout '600'
+#	option sticky '1'
+#	option sticky_timeout '600'
 	option default_policy 'balanced'
 	option flush_conntrack '1'
 
