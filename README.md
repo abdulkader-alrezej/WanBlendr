@@ -166,7 +166,7 @@ config rule 'default_all'
    ```
 
 
-<img width="1546" height="840" alt="Test1_5009" src="https://github.com/user-attachments/assets/261eadc4-e8fa-43e5-8cd0-dc970d986aae" />
+<img width="1735" height="793" alt="2gig" src="https://github.com/user-attachments/assets/7b719e3d-cfd2-4ad9-84a1-bdb2087ecbd9" />
 
 ![574360848_770330069370513_5489269951282198867_n](https://github.com/user-attachments/assets/17c0aa7e-33bf-47ba-ac7a-992691eec5df)
 
