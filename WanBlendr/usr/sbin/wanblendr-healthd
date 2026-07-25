@@ -1,0 +1,122 @@
+#!/bin/sh
+# WanBlendr v1.0
+# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: © 2025 Abdulkader Alrezej <abdulkader.alrezej@gmail.com> (Facebook: https://www.facebook.com/abdulkader.alrezej)
+
+CFG=/etc/config/wanblendr
+
+INTV="$(uci -q get wanblendr.globals.interval 2>/dev/null)"; [ -z "$INTV" ] && INTV=5
+RD="$(uci -q get wanblendr.globals.retries_down 2>/dev/null)"; [ -z "$RD" ] && RD=3
+RU="$(uci -q get wanblendr.globals.retries_up   2>/dev/null)"; [ -z "$RU" ] && RU=3
+
+STATE="/var/run/wanblendr.weights"
+HEALTH="/var/run/wanblendr.health"
+mkdir -p /var/run
+
+log(){ logger -t wanblendr-healthd "$*"; }
+
+file_list_secs() {
+  awk '$1=="config" && $2=="wan"{g=$3; gsub(/'\''|"/,"",g); print g}' "$CFG" 2>/dev/null || true
+}
+get_secs() {
+  secs="$(uci -q show wanblendr 2>/dev/null | sed -n 's/^wanblendr\.\(wan[^=]*\)=wan/\1/p' || true)"
+  [ -n "$secs" ] && { echo "$secs"; return; }
+  file_list_secs
+}
+file_get_opt() {
+  awk -v S="$1" -v O="$2" '
+    $1=="config" && $2=="wan"{g=$3; gsub(/'\''|"/,"",g); in=(g==S); next}
+    in && $1=="option" && $2==O { v=$3; sub(/^'\''|^"/,"",v); sub(/'\''$|"$/,"",v); print v; exit }
+  ' "$CFG" 2>/dev/null || true
+}
+get_opt() {
+  v="$(uci -q get wanblendr.$1.$2 2>/dev/null || true)"
+  [ -n "$v" ] && { echo "$v"; return; }
+  file_get_opt "$1" "$2"
+}
+
+list_wans() {
+  for s in $(get_secs); do
+    IF="$(get_opt "$s" ifname)"
+    MARK="$(get_opt "$s" mark)"
+    WGT="$(get_opt "$s" weight)"; [ -z "$WGT" ] && WGT=50
+    PROBE="$(get_opt "$s" probe_ip)"
+    [ -n "$IF" ] && [ -n "$MARK" ] && echo "$IF $MARK $WGT $PROBE"
+  done
+}
+
+build_health_from_uci() {
+  list_wans | while read IF MARK DEF PROBE; do
+    DEV="$(ifstatus "$IF" 2>/dev/null | jsonfilter -e @.l3_device 2>/dev/null || true)"
+    [ -z "$DEV" ] && DEV="$IF"
+    echo "$IF 0 0 $DEF $DEF $MARK $PROBE $DEV"
+  done
+}
+
+apply_weights() {
+  EQUAL="$(uci -q get wanblendr.globals.equalize_active || echo 0)"
+  if [ "$EQUAL" = "1" ]; then
+    awk '$4>0 {print $6, 1} $4<=0 {print $6, 0}' "$HEALTH" > "$STATE"
+  else
+    awk '{print $6, $4}' "$HEALTH" > "$STATE"
+  fi
+  /usr/sbin/wanblendr-apply-nft
+}
+
+if [ ! -s "$STATE" ]; then
+  list_wans | awk '{print $2, $3}' > "$STATE"
+fi
+build_health_from_uci > "$HEALTH"
+log "started: interval=$INTV, rd=$RD, ru=$RU"
+
+while :; do
+  CHANGED=0
+  TMP="$(mktemp)"
+
+  CURRENT="$(list_wans)"
+  if [ -z "$CURRENT" ]; then
+    sleep "$INTV"
+    continue
+  fi
+
+  while read IF GOOD BAD CUR DEF MARK PROBE DEV; do
+    echo "$CURRENT" | awk '{print $1}' | grep -qx "$IF" || { CHANGED=1; continue; }
+
+    NEWDEV="$(ifstatus "$IF" 2>/dev/null | jsonfilter -e @.l3_device 2>/dev/null || true)"
+    [ -n "$NEWDEV" ] && DEV="$NEWDEV"
+
+    UP="$(ifstatus "$IF" 2>/dev/null | jsonfilter -e @.up 2>/dev/null || true)"
+
+    if [ "$UP" != true ]; then
+      if [ "$CUR" -gt 0 ]; then CUR=0; CHANGED=1; log "link-down: $IF -> weight 0"; fi
+      GOOD=0; BAD=$RD
+    else
+      [ -z "$PROBE" ] && PROBE=8.8.4.4
+      if ping -I "$DEV" -c10 -W2 "$PROBE" >/dev/null 2>&1; then
+        GOOD=$((GOOD+1)); BAD=0
+        if [ "$CUR" -eq 0 ] && [ "$GOOD" -ge "$RU" ]; then CUR="$DEF"; CHANGED=1; log "probe-up: $IF -> weight $DEF"; fi
+      else
+        BAD=$((BAD+1)); GOOD=0
+        if [ "$CUR" -gt 0 ] && [ "$BAD" -ge "$RD" ]; then CUR=0; CHANGED=1; log "probe-down: $IF -> weight 0"; fi
+      fi
+    fi
+
+    echo "$IF $GOOD $BAD $CUR $DEF $MARK $PROBE $DEV" >> "$TMP"
+  done < "$HEALTH"
+
+  while read IF MARK DEF PROBE; do
+    grep -q "^$IF " "$TMP" 2>/dev/null || {
+      DEV="$(ifstatus "$IF" 2>/dev/null | jsonfilter -e @.l3_device 2>/dev/null || true)"
+      [ -z "$DEV" ] && DEV="$IF"
+      echo "$IF 0 0 $DEF $DEF $MARK $PROBE $DEV" >> "$TMP"
+      CHANGED=1
+      log "added-if: $IF -> weight $DEF"
+    }
+  done <<EOF_WANS
+$CURRENT
+EOF_WANS
+
+  mv "$TMP" "$HEALTH"
+  [ "$CHANGED" -eq 1 ] && apply_weights
+  sleep "$INTV"
+done

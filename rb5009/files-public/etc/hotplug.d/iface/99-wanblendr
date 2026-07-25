@@ -1,0 +1,13 @@
+#!/bin/sh
+# WanBlendr v1.0
+# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: © 2025 Abdulkader Alrezej <abdulkader.alrezej@gmail.com> (Facebook: https://www.facebook.com/abdulkader.alrezej)
+
+case "$ACTION" in
+  ifup|ifupdate)
+    /usr/sbin/wanblendr-route-apply --ifup "$INTERFACE"
+    ;;
+  ifdown)
+    /usr/sbin/wanblendr-route-apply --ifdown "$INTERFACE"
+    ;;
+esac

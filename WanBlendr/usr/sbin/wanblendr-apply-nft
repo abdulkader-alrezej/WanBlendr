@@ -1,0 +1,140 @@
+#!/bin/sh
+# WanBlendr v1.0 (policy-aware, busybox-safe)
+# SPDX-License-Identifier: GPL-2.0-only
+
+set -e
+
+LAN_IF_RAW="$(uci -q get wanblendr.globals.lan_if || echo p5)"
+BUCKETS="$(uci -q get wanblendr.globals.buckets || echo 100)"
+STATE="/var/run/wanblendr.weights"
+mkdir -p /var/run
+normalize_ws() {
+  printf '%s' "$1" | sed 's/[[:space:]]\+/,/g; s/, \?/,/g; s/ \+/,/g; s/,,\+/,/g; s/^,//; s/,$//; s/,/ /g'
+}
+build_if_expr() {
+  local raw="$1" norm cnt=0 items="" it
+  norm="$(normalize_ws "$raw")"; [ -z "$norm" ] && norm="p5"
+  IFS=' ' ; set -- $norm ; unset IFS
+  for it in "$@"; do [ -n "$it" ] && { cnt=$((cnt+1)); items="${items:+$items, }\"$it\""; }; done
+  if [ "$cnt" -le 1 ]; then printf '"%s"\n' "$(printf '%s' "$norm" | awk '{print $1}')"
+  else printf '{ %s }\n' "$items"; fi
+}
+IF_EXPR="$(build_if_expr "$LAN_IF_RAW")"
+build_list_from_uci() {
+  for sec in $(uci -q show wanblendr | sed -n "s/^wanblendr\.\(wan[^=]*\)=wan/\1/p"); do
+    MARK="$(uci -q get wanblendr.$sec.mark 2>/dev/null)"
+    WGT="$(uci -q get wanblendr.$sec.weight 2>/dev/null)"
+    [ -n "$MARK" ] || continue
+    [ -n "$WGT" ] || WGT=50
+    echo "$MARK $WGT"
+  done
+}
+emit_map_entries_from_list() {
+  LIST="$(cat -)"
+  TOTAL="$(printf '%s\n' "$LIST" | awk 'NF{t+=$2}END{print t}')"
+  [ -n "$TOTAL" ] || TOTAL=0
+  if [ "$TOTAL" -le 0 ]; then
+    CNT=$(printf '%s\n' "$LIST" | awk 'NF' | wc -l)
+    if [ "$CNT" -le 0 ]; then
+      echo ""
+      return 0
+    fi
+    EQ=$((BUCKETS / CNT))
+    LIST="$(printf '%s\n' "$LIST" | awk 'NF{print $1, '"$EQ"'}')"
+    TOTAL=$((EQ * CNT))
+  fi
+  CUM=0
+  OUT=""
+  LAST_NZ=""
+  while read -r M W; do
+    [ -n "$M" ] || continue
+    [ "${W:-0}" -gt 0 ] || continue
+    N=$((W * BUCKETS / TOTAL)); [ "$N" -lt 1 ] && N=1
+    START=$CUM
+    END=$((START + N - 1))
+    [ "$END" -ge "$BUCKETS" ] && END=$((BUCKETS - 1))
+    OUT="$OUT $START-$END : $M,"
+    CUM=$((END + 1))
+    LAST_NZ="$M"
+  done <<EOF2
+$LIST
+EOF2
+  if [ -n "$LAST_NZ" ] && [ "$CUM" -lt "$BUCKETS" ]; then
+    OUT="$OUT $CUM-$((BUCKETS-1)) : $LAST_NZ,"
+  fi
+  printf '%s\n' "$OUT"
+}
+if [ ! -s "$STATE" ]; then
+  build_list_from_uci > "$STATE"
+fi
+LIST="$(cat "$STATE")"
+MAP_ENTRIES="$(printf '%s\n' "$LIST" | emit_map_entries_from_list)"
+build_policy_snippets() {
+  local CHAIN="$1"
+  local SNIPPETS=""
+  for psec in $(uci -q show wanblendr | awk -F= '/=policy/{print $1}' | sed 's/^wanblendr\.//'); do
+    SRC="$(uci -q get wanblendr.$psec.src 2>/dev/null)"
+    WLIST_RAW="$(uci -q get wanblendr.$psec.wans 2>/dev/null)"
+    [ -n "$SRC" ] || continue
+    [ -n "$WLIST_RAW" ] || continue
+    WLIST="$(normalize_ws "$WLIST_RAW")"
+    ALLOWED_MARKS=""
+    for w in $WLIST; do
+      MK="$(uci -q get wanblendr.$w.mark 2>/dev/null)"
+      [ -n "$MK" ] && ALLOWED_MARKS="$ALLOWED_MARKS $MK"
+    done
+    [ -n "$ALLOWED_MARKS" ] || continue
+    SUBLIST="$(printf '%s\n' "$LIST" | awk -v mks="$ALLOWED_MARKS" '
+      BEGIN{split(mks,a," "); for(i in a) if(a[i]!="") ok[a[i]]=1}
+      ok[$1]{print $0}
+    ')"
+    [ -n "$SUBLIST" ] || continue
+    ENTRIES="$(printf '%s\n' "$SUBLIST" | emit_map_entries_from_list)"
+    [ -n "$ENTRIES" ] || continue
+    SRC_EXPR="$(normalize_ws "$SRC")"
+    if printf '%s\n' "$SRC_EXPR" | awk 'NF>1' >/dev/null 2>&1; then
+      SRC_MATCH="{ $(printf '%s\n' "$SRC_EXPR" | awk '{for(i=1;i<=NF;i++){if(i>1)printf(", ");printf("%s",$i)}}') }"
+    else
+      SRC_MATCH="$(printf '%s' "$SRC_EXPR")"
+    fi
+    if [ "$CHAIN" = "output" ]; then
+      RULE="
+      ip saddr $SRC_MATCH ct state established,related meta mark set ct mark return
+      ip saddr $SRC_MATCH ct state new ct mark set numgen random mod $BUCKETS map { ${ENTRIES%?} } meta mark set ct mark return
+"
+    else
+      RULE="
+      iifname $IF_EXPR ip saddr $SRC_MATCH ct state established,related meta mark set ct mark return
+      iifname $IF_EXPR ip saddr $SRC_MATCH ct state new ct mark set numgen random mod $BUCKETS map { ${ENTRIES%?} } meta mark set ct mark return
+"
+    fi
+    SNIPPETS="$SNIPPETS
+$RULE"
+  done
+  printf '%s\n' "$SNIPPETS"
+}
+POLICY_SNIPPETS_PREROUTING="$(build_policy_snippets prerouting)"
+POLICY_SNIPPETS_OUTPUT="$(build_policy_snippets output)"
+printf '%s\n' "$LIST" > "$STATE"
+nft list table inet wanblendr >/dev/null 2>&1 && nft delete table inet wanblendr || true
+nft -f - <<EONFT
+table inet wanblendr {
+  chain prerouting {
+    type filter hook prerouting priority mangle; policy accept;
+    iifname $IF_EXPR ct state established,related meta mark set ct mark
+    iifname != $IF_EXPR return
+    fib daddr type { local, broadcast, multicast } return
+$(printf '%s\n' "$POLICY_SNIPPETS_PREROUTING")
+    ct state new ct mark set numgen random mod $BUCKETS map { ${MAP_ENTRIES%?} }
+    meta mark set ct mark
+  }
+  chain output {
+    type route hook output priority mangle; policy accept;
+    ct state established,related meta mark set ct mark
+    oifname $IF_EXPR return
+$(printf '%s\n' "$POLICY_SNIPPETS_OUTPUT")
+    ct state new ct mark set numgen random mod $BUCKETS map { ${MAP_ENTRIES%?} }
+    meta mark set ct mark
+  }
+}
+EONFT

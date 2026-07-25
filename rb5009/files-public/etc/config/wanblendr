@@ -1,0 +1,19 @@
+# WanBlendr v1.0
+# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: © 2025 Abdulkader Alrezej <abdulkader.alrezej@gmail.com> (Facebook: https://www.facebook.com/abdulkader.alrezej)
+
+config wanblendr 'globals'
+	option lan_if 'sfp p8'
+	option interval '5'
+	option retries_down '3'
+	option retries_up '3'
+	option buckets '100'
+	option equalize_active '0'
+
+config wan 'wan1'
+	option ifname 'wan1'
+	option table '201'
+	option mark '0xC9'
+	option weight '100'
+	option probe_ip '8.8.4.4'
+

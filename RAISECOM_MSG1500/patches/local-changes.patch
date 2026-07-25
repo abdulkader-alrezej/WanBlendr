@@ -1,0 +1,204 @@
+diff --git a/target/linux/ramips/dts/mt7621.dtsi b/target/linux/ramips/dts/mt7621.dtsi
+index da03d47ff6..e8e358ed3d 100644
+--- a/target/linux/ramips/dts/mt7621.dtsi
++++ b/target/linux/ramips/dts/mt7621.dtsi
+@@ -39,7 +39,6 @@
+ 	};
+ 
+ 	chosen {
+-		bootargs = "console=ttyS0,57600";
+ 	};
+ 
+ 	mmc_reg_1v8: regulator-1v8 {
+diff --git a/target/linux/ramips/dts/mt7621_raisecom_msg1500-x-00.dts b/target/linux/ramips/dts/mt7621_raisecom_msg1500-x-00.dts
+index f4d893a366..ad4e054c5b 100644
+--- a/target/linux/ramips/dts/mt7621_raisecom_msg1500-x-00.dts
++++ b/target/linux/ramips/dts/mt7621_raisecom_msg1500-x-00.dts
+@@ -4,11 +4,10 @@
+ 
+ #include <dt-bindings/gpio/gpio.h>
+ #include <dt-bindings/input/input.h>
+-#include <dt-bindings/leds/common.h>
+ 
+ / {
+ 	compatible = "raisecom,msg1500-x-00", "mediatek,mt7621-soc";
+-	model = "RAISECOM MSG1500 X.00";
++	model = ">> KT-708 & >> KT-704";
+ 
+ 	aliases {
+ 		led-boot = &led_usb;
+@@ -33,8 +32,7 @@
+ 		};
+ 
+ 		led_usb: usb {
+-			function = LED_FUNCTION_USB;
+-			color = <LED_COLOR_ID_BLUE>;
++			label = "blue:usb";
+ 			gpios = <&gpio 13 GPIO_ACTIVE_LOW>;
+ 			trigger-sources = <&ehci_port2>;
+ 			linux,default-trigger = "usbport";
+@@ -83,42 +81,30 @@
+ 			reg = <0x80000 0x80000>;
+ 			read-only;
+ 
+-			nvmem-layout {
+-				compatible = "fixed-layout";
+-				#address-cells = <1>;
+-				#size-cells = <1>;
+-
+-				macaddr_config_8014: macaddr@8014 {
+-					compatible = "mac-base";
+-					reg = <0x8014 0x11>;
+-					#nvmem-cell-cells = <1>;
+-				};
+-
+-				macaddr_config_8036: macaddr@8036 {
+-					compatible = "mac-base";
+-					reg = <0x8036 0x11>;
+-					#nvmem-cell-cells = <1>;
+-				};
++			compatible = "nvmem-cells";
++			#address-cells = <1>;
++			#size-cells = <1>;
++
++			macaddr_config_8014: macaddr@8014 {
++				reg = <0x8014 0x11>;
++			};
++
++			macaddr_config_8036: macaddr@8036 {
++				reg = <0x8036 0x11>;
+ 			};
+ 		};
+ 
+-		partition@100000 {
++		factory: partition@100000 {
+ 			label = "Factory";
+ 			reg = <0x100000 0x40000>;
+ 			read-only;
+ 
+-			nvmem-layout {
+-				compatible = "fixed-layout";
+-				#address-cells = <1>;
+-				#size-cells = <1>;
++			compatible = "nvmem-cells";
++			#address-cells = <1>;
++			#size-cells = <1>;
+ 
+-				eeprom_factory_0: eeprom@0 {
+-					reg = <0x0 0x4da8>;
+-				};
+-
+-				macaddr_factory_4: macaddr@4 {
+-					reg = <0x4 0x6>;
+-				};
++			macaddr_factory_4: macaddr@4 {
++				reg = <0x4 0x6>;
+ 			};
+ 		};
+ 
+@@ -142,58 +128,61 @@
+ 	wifi@0,0 {
+ 		compatible = "mediatek,mt76";
+ 		reg = <0x0000 0 0 0 0>;
++		mediatek,mtd-eeprom = <&factory 0x0>;
+ 		/* 5 GHz (phy1) does not take the address from calibration data,
+ 		   but setting it manually here works */
+-		nvmem-cells = <&eeprom_factory_0>, <&macaddr_factory_4>;
+-		nvmem-cell-names = "eeprom", "mac-address";
++		nvmem-cells = <&macaddr_factory_4>;
++		nvmem-cell-names = "mac-address";
+ 	};
+ };
+ 
+ &gmac0 {
+-	nvmem-cells = <&macaddr_config_8014 0>;
+-	nvmem-cell-names = "mac-address";
++	nvmem-cells = <&macaddr_config_8014>;
++	nvmem-cell-names = "mac-address-ascii";
+ };
+ 
+ &gmac1 {
+ 	status = "okay";
+-	label = "wan";
+-	phy-handle = <&ethphy4>;
++	label = "p5";
++	phy-handle = <&ethphy4_ext>;
+ 
+-	nvmem-cells = <&macaddr_config_8036 0>;
+-	nvmem-cell-names = "mac-address";
++	nvmem-cells = <&macaddr_config_8036>;
++	nvmem-cell-names = "mac-address-ascii";
+ };
+ 
+-&ethphy4 {
+-	/delete-property/ interrupts;
++&mdio {
++	ethphy4_ext: ethernet-phy@4 {
++		reg = <4>;
++	};
+ };
+ 
+ &switch0 {
+ 	ports {
+ 		port@0 {
+ 			status = "okay";
+-			label = "lan4";
++			label = "p1";
+ 		};
+ 
+ 		port@1 {
+ 			status = "okay";
+-			label = "lan3";
++			label = "p2";
+ 		};
+ 
+ 		port@2 {
+ 			status = "okay";
+-			label = "lan2";
++			label = "p3";
+ 		};
+ 
+ 		port@3 {
+ 			status = "okay";
+-			label = "lan1";
++			label = "p4";
+ 		};
+ 	};
+ };
+ 
+ &state_default {
+ 	gpio {
+-		groups = "i2c", "jtag", "uart3", "wdt";
++		groups = "i2c", "jtag", "wdt";
+ 		function = "gpio";
+ 	};
+ };
+diff --git a/target/linux/ramips/mt7621/config-6.6 b/target/linux/ramips/mt7621/config-6.6
+index 7a3e68ef45..21ee5c4db9 100644
+--- a/target/linux/ramips/mt7621/config-6.6
++++ b/target/linux/ramips/mt7621/config-6.6
+@@ -19,6 +19,8 @@ CONFIG_CMDLINE_BOOL=y
+ CONFIG_COMMON_CLK=y
+ CONFIG_COMPACT_UNEVICTABLE_DEFAULT=1
+ CONFIG_COMPAT_32BIT_TIME=y
++CONFIG_CONSOLE_LOGLEVEL_DEFAULT=1
++CONFIG_CONSOLE_LOGLEVEL_QUIET=1
+ CONFIG_CONTEXT_TRACKING=y
+ CONFIG_CONTEXT_TRACKING_IDLE=y
+ CONFIG_CPU_GENERIC_DUMP_TLB=y
+@@ -120,6 +122,7 @@ CONFIG_MDIO_BUS=y
+ CONFIG_MDIO_DEVICE=y
+ CONFIG_MDIO_DEVRES=y
+ CONFIG_MEDIATEK_GE_PHY=y
++CONFIG_MESSAGE_LOGLEVEL_DEFAULT=1
+ CONFIG_MFD_SYSCON=y
+ CONFIG_MIGRATION=y
+ CONFIG_MIKROTIK=y
+@@ -237,6 +240,7 @@ CONFIG_POWER_RESET=y
+ CONFIG_POWER_RESET_GPIO=y
+ CONFIG_POWER_SUPPLY=y
+ CONFIG_PREEMPT_NONE_BUILD=y
++# CONFIG_PRINTK is not set
+ CONFIG_PTP_1588_CLOCK_OPTIONAL=y
+ CONFIG_QCOM_NET_PHYLIB=y
+ CONFIG_QUEUED_RWLOCKS=y
