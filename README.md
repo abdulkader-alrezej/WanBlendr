@@ -14,6 +14,10 @@ For each firmware release, the matching CCS files are provided with the same Git
 
 Use the CCS files from the same release as the firmware image.
 
+## What is NOT included (private MicroPython UI)
+My MicroPython-based web UI and related private code are not included here.
+They are separate programs (mere aggregation) and are not derived from GPL code. Therefore, they are not part of the GPLv2 CCS requirement. The distributed commercial image contains that private UI; the publicly published CCS here contains everything required to rebuild the OpenWrt base and GPL-covered parts.
+
 ## License
 
 Files keep their respective licenses.
