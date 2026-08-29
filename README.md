@@ -1,3 +1,7 @@
+## إنضم إلى مجموعتنا في فيسبوك عبر الرابط التالي 
+
+https://www.facebook.com/share/g/1BwqxXK6xa/
+
 # WanBlendr & WanBlendrPlus-GPL-OpenWrt
 
 WanBlendr is a WAN load balancing and failover firmware based on OpenWrt using nftables.
