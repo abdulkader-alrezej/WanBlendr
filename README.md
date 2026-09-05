@@ -4,6 +4,15 @@ https://www.facebook.com/share/g/1BwqxXK6xa/
 
 # WanBlendr & WanBlendrPlus-GPL-OpenWrt
 
+### واجهة تفعيل التطبيق:
+
+<img width="770" height="622" alt="image" src="https://github.com/user-attachments/assets/7f9bfb75-c4ab-44ae-a988-5712887de9eb" />
+
+### تحميل التطبيق
+
+[⬇️ تحميل التطبيق](https://github.com/abdulkader-alrezej/WanBlendr/blob/main/WanBlendr_Source_Code_Full_09-05-2026/Lic_Free/lic2_old_WanBlendr_v361_v371.pyw)
+
+
 WanBlendr is a WAN load balancing and failover firmware based on OpenWrt using nftables.
 
 WanBlendr does not use mwan3 and does not use iptables.
