@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ title }} - Wan Blendr</title>
+  <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/static/css/theme.css">
+  <link rel="stylesheet" href="/static/css/topbar.css">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-row">
+      <div class="topbar-left">
+        <span class="project-name">Wan Blendr</span><span class="project-ver" id="project-ver">ver.--</span>
+      </div>
+      <div class="topbar-right" id="health-inline">
+
+        <div class="hitem" id="hitem-wb"><span class="icon">🖥️</span><span id="hstrip-wb">--</span></div>
+        <div class="hitem"><span class="icon">⏱</span><span id="hstrip-uptime">--</span></div>
+        <div class="hitem"><span class="icon">📅</span><span id="hstrip-date">--</span> <span id="hstrip-time">--</span></div>
+        <div class="hitem"><span class="icon">💾</span><span id="hstrip-mem">--</span></div>
+        <div class="hitem cpu"><span class="icon">⚙️</span><span id="hstrip-cpu">--</span></div>
+        <div class="hitem fw"><span class="icon">🧱</span><span id="hstrip-fw">--</span></div>
+      </div>
+    </div>
+    <div class="topbar-nav">
+      <a href="/dashboard/interfaces"><span class="nav-ico">🔌</span>Interfaces</a>
+      <a href="/dashboard/vlan"><span class="nav-ico">🧩</span>VLAN</a>
+      <a href="/dashboard/lan"><span class="nav-ico">🏠</span>LAN</a>
+      <a href="/dashboard/wireless"><span class="nav-ico">📶</span>Wireless</a>
+      <a href="/dashboard/wan"><span class="nav-ico">🌐</span>WAN</a>
+      <a href="/dashboard/dmz"><span class="nav-ico">🛡️</span>DMZ</a>
+      <a href="/dashboard/ip_tools"><span class="nav-ico">🛠️</span>IP Tools</a>
+      <a href="/dashboard/license"><span class="nav-ico">🧾</span>License</a>
+      <a href="/dashboard/setting"><span class="nav-ico">⚙️</span>Setting</a>
+      <a href="/dashboard/about"><span class="nav-ico">ℹ️</span>About</a>
+      <a href="#" onclick="rebootSystem()"><span class="nav-ico">🔄</span>Reboot</a>
+      <a href="/logout"><span class="nav-ico">🚪</span>Logout</a>
+    </div>
+  </div>
+  <div class="layout">
+    <div class="main-container">
+    {% block content %}{% endblock %}
+    </div>
+  </div>
+  <script src="/static/js/app.js?v=4"></script>
+  <script>
+    function rebootSystem() {
+      if (confirm('Are you sure you want to reboot the WAN Blendr system?')) {
+        fetch('/reboot_system', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+          .then(r => { if (r.ok) alert('System is rebooting...'); else alert('Failed to reboot the system.'); })
+          .catch(e => alert('Error: ' + e.message));
+      }
+    }
+
+  </script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

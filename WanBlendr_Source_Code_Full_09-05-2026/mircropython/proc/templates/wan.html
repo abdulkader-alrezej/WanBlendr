@@ -1,0 +1,517 @@
+<style>
+#loadingOverlay{display:none;position:fixed;z-index:10000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,.5)}
+#loadingOverlay .spinner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);border:8px solid #f3f3f3;border-top:8px solid #444;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite}
+@keyframes spin{0%{transform:translate(-50%,-50%) rotate(0deg)}100%{transform:translate(-50%,-50%) rotate(360deg)}}
+table{width:100%;border-collapse:collapse}
+th,td{border:1px solid var(--clr-gray-400);padding:8px;text-align:center;white-space:normal;overflow-wrap:break-word}
+th{background:linear-gradient(180deg, var(--clr-gray-600) 0%, var(--clr-gray-700) 100%);color:var(--text-color-heading)}
+.header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.add-btn,.delete-btn,.edit-btn,.save-btn,.cancel-btn,.dns-btn{background:#445;color:#fff;border:none;padding:6px 10px;cursor:pointer;border-radius:4px}
+.lanlb-btn{background:#556;color:#fff;border:none;padding:6px 10px;cursor:pointer;border-radius:4px}
+.add-btn:hover,.delete-btn:hover,.edit-btn:hover,.save-btn:hover,.cancel-btn:hover{opacity:.9}
+#yemenListContainer{display:flex;flex-direction:column;align-items:flex-start}
+#yemenListContainer label{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+table tr td:last-child{display:flex;justify-content:center;gap:6px}
+.auto-btn{color:#fff;border:none;padding:6px 10px;cursor:pointer;border-radius:4px}
+.modal{display:none;position:fixed;z-index:9999;left:0;top:0;width:100%;height:100%;overflow:auto;background:rgba(0,0,0,.5)}
+.modal-content{background:var(--bg-elevated);margin:100px auto;padding:20px;width:420px;border-radius:6px;color:var(--text-color)}
+.modal-content h3{margin-top:0}
+.modal-content label{display:block;margin-bottom:6px}
+.modal-content select,.modal-content input{width:100%;margin-bottom:10px;padding:6px;background:var(--bg-surface);color:var(--text-color);border:1px solid var(--clr-gray-400);border-radius:4px}
+.modal-buttons{display:flex;justify-content:flex-end;gap:10px}
+.table-small td, .table-small th{font-size:12px}
+.src-form{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.src-form .field{display:flex;flex-direction:column;gap:6px}
+@media (max-width:600px){.src-form{grid-template-columns:1fr}}
+#sourceLbModal .modal-buttons{margin-top:12px}
+.modal-content label.eq-toggle{display:flex !important; margin-bottom:0 !important}
+.modal-content label.eq-toggle input[type="checkbox"]{margin:0}
+.modal-content label.eq-toggle span{white-space:nowrap}
+.error-msg{color:#c00;margin-bottom:10px}
+.comment-row td{background:var(--bg-surface);color:var(--text-color-heading);font-weight:bold;text-align:center;font-size:12px}
+/* DNS editor improvements */
+.dns-btn{background: linear-gradient(135deg,#3f51b5,#5865f2);}
+.dns-btn:hover{opacity:.9}
+#dnsModal .modal-content{max-width:820px}
+#dnsModal .dns-form{display:grid;grid-template-columns:1fr 0.7fr 1.2fr 1.2fr;gap:12px 16px;margin:12px 0 16px;max-height:50vh;overflow:auto;padding-right:4px}
+#dnsModal .dns-head{font-weight:700;color:var(--text-color-heading);padding-bottom:4px;border-bottom:1px solid var(--clr-gray-400)}
+#dnsModal .dns-head.lbl{text-align:left}
+#dnsModal .dns-head.tog{text-align:center}
+#dnsModal .dns-head.d1{text-align:left}
+#dnsModal .dns-head.d2{text-align:left}
+#dnsModal .dns-label{align-self:center;color:var(--text-color-heading);font-weight:600}
+#dnsModal .dns-input{width:100%;min-width:0;padding:8px 10px;background:var(--bg-surface);color:var(--text-color);border:1px solid var(--clr-gray-400);border-radius:4px}
+#dnsModal .dns-input[disabled]{opacity:.6;cursor:not-allowed}
+#dnsModal .dns-toggle{display:flex;align-items:center;justify-content:center}
+#dnsModal .dns-note{font-size:12px;color:var(--clr-gray-200);margin:8px 0 0;opacity:.9}
+</style>
+<div class="header-row">
+  <div style="display:flex;align-items:center;gap:.75rem">
+    <button class="add-btn"  id="addBtn">Add</button>
+    <button class="add-btn"  id="sourceLbBtn">Source LB</button>
+    <button class="add-btn"  id="speedBtn">Speed</button>
+  </div>
+</div>
+<table id="wan-table">
+  <thead>
+    <tr>
+      <th>Name</th><th>Type</th><th>Interface</th><th>IP Address</th>
+      <th>Gateway</th><th>DNS</th><th>Status</th><th>Uptime</th><th>Action</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+<div class="modal" id="addModal">
+  <div class="modal-content">
+    <h3>Add WAN Interface</h3>
+    <div class="error-msg" id="errorMsg" style="display:none"></div>
+    <label for="typeSelect">Type:</label>
+    <select id="typeSelect">
+      <option value="static" selected>Static IP</option>
+      <option value="dhcp">DHCP Client</option>
+      <option value="pppoe">PPPoE Client</option>
+    </select>
+    <label for="interfaceSelect">Interface:</label>
+    <select id="interfaceSelect"></select>
+    <label for="commentInput">Comment (up to 10 alphanumeric chars):</label>
+    <input type="text" id="commentInput" maxlength="10" placeholder="Optional"/>
+    <div id="staticFields">
+      <label for="ip_addressInput">IP Address:</label>
+      <input id="ip_addressInput" placeholder="192.168.25.25">
+      <label for="net_maskInput">Netmask:</label>
+      <input id="net_maskInput" placeholder="255.255.255.0">
+      <label for="gatewayInput">Gateway:</label>
+      <input id="gatewayInput" placeholder="192.168.25.1">
+      <label for="dnsInput">DNS:</label>
+      <input id="dnsInput" placeholder="8.8.4.4, 8.8.8.8">
+    </div>
+    <div id="dhcpFields" style="display:none"><p>DHCP doesn't require additional fields.</p></div>
+    <div id="pppoeFields" style="display:none">
+      <label for="pppoeUser">PPPoE Username:</label>
+      <input id="pppoeUser">
+      <label for="pppoePass">PPPoE Password:</label>
+      <input type="password" id="pppoePass">
+    </div>
+    <div class="modal-buttons">
+      <button class="save-btn"   id="saveBtn">Save</button>
+      <button class="cancel-btn" id="cancelBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="modal" id="dnsModal" style="display:none">
+  <div class="modal-content" style="max-width:820px">
+    <h3>Edit DNS (DHCP/PPPoE)</h3>
+    <div id="dnsErr" class="error-msg" style="display:none"></div>
+    <div id="dnsList" class="dns-form"></div>
+    <div class="dns-note">Note: A WanBlendr reboot is required to apply DNS changes.</div>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button id="dnsCancelBtn" class="cancel-btn">Cancel</button>
+      <button id="dnsSaveBtn"   class="save-btn">Save</button>
+    </div>
+  </div>
+</div>
+<div class="modal" id="sourceLbModal">
+  <div class="modal-content">
+    <h3>Source LB</h3>
+    <div class="error-msg" id="srcErr" style="display:none"></div>
+    <div class="src-form">
+      <div class="field">
+        <label for="srcLanSelect">LAN Source</label>
+        <select id="srcLanSelect"></select>
+      </div>
+      <div class="field">
+        <label for="destWanSelect">Dest WAN (multiple)</label>
+        <select id="destWanSelect" multiple size="5"></select>
+      </div>
+    </div>
+    <div style="margin:10px 0 6px;font-weight:700">Policies</div>
+    <table class="table-small" style="width:100%">
+      <thead><tr><th>ID</th><th>Src</th><th>Dest</th><th>Action</th></tr></thead>
+      <tbody id="srcPolBody"></tbody>
+    </table>
+    <div class="modal-buttons">
+      <button class="save-btn"   id="srcSaveBtn">Save</button>
+      <button class="cancel-btn" id="srcCancelBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="speedModal">
+  <div class="modal-content" style="width:800px; max-width:95vw">
+    <h3>Speed Settings</h3>
+    <div class="error-msg" id="speedErr" style="display:none"></div>
+    <div style="margin-bottom:10px;font-size:0.9em;color:#666">
+       Set Weight (1-999) and Track IP (IPv4) for each WAN interface. Note: These weights are based on line speed, NOT Route metrics.
+       <div style="color:red; margin-top:5px; direction:rtl">ملاحظة: هذه الأوزان تعتمد على سرعة الخط، وليست أوزان توجيه (Route Metrics).</div>
+    </div>
+    <table class="table-small" style="width:100%">
+      <thead><tr><th>Interface</th><th>Weight</th><th>Track IP</th></tr></thead>
+      <tbody id="speedBody"></tbody>
+    </table>
+    <div class="modal-buttons">
+      <button class="save-btn"   id="speedSaveBtn">Save</button>
+      <button class="cancel-btn" id="speedCancelBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="loadingOverlay"><div class="spinner"></div></div>
+<script>
+function showLoading(){document.getElementById('loadingOverlay').style.display='block';document.querySelectorAll('button').forEach(b=>b.disabled=true);}
+function hideLoading(){document.getElementById('loadingOverlay').style.display='none';document.querySelectorAll('button').forEach(b=>b.disabled=false);}
+function isIPv4(ip){const r=/^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/;return r.test(ip);}
+async function loadWanData(){
+  const resp=await fetch('/dashboard/wan/data',{cache:'no-store'});
+  if(!resp.ok){console.error('Fetch error');return;}
+  const data=await resp.json();
+  const tbody=document.querySelector('#wan-table tbody');
+  tbody.innerHTML='';
+  data.forEach(d=>{
+    if(d.Comment){
+      const cr=document.createElement('tr');cr.className='comment-row';
+      const td=document.createElement('td');td.colSpan=9;td.textContent=`# ${d.Comment}`;cr.appendChild(td);
+      tbody.appendChild(cr);
+    }
+    const tr=document.createElement('tr');
+    const dnsBtn = ((d.Type||'').toUpperCase()==='DHCP' || (d.Type||'').toUpperCase()==='PPPOE') ? `<button class="dns-btn" data-name="${d.RealName}">Edit DNS</button>` : '';
+    tr.innerHTML=`
+      <td>${d.Name}</td><td>${d.Type}</td><td>${d.Interface}</td>
+      <td>${d.IP_Address}</td><td>${d.Gateway}</td><td>${d.DNS}</td>
+      <td>${d.Status}</td><td>${d.Uptime}</td>
+      <td>
+        <button class="delete-btn" onclick="deleteWan('${d.RealName}')">Delete</button>
+        <button class="auto-btn" data-name="${d.RealName}"></button>
+        ${dnsBtn}
+      </td>`;
+    tbody.appendChild(tr);
+  });
+  // Bind per-row DNS edit buttons
+  document.querySelectorAll('.dns-btn').forEach(btn=>{
+    btn.onclick = ()=>{
+      const nm = btn.getAttribute('data-name') || '';
+      openDnsModal(nm);
+    };
+  });
+  document.querySelectorAll('.auto-btn').forEach(btn=>{
+    const name = btn.getAttribute('data-name');
+    const row = data.find(x=>x.RealName===name);
+    const a = (row && (row.Auto||'').trim()==='1');
+    btn.textContent = a ? 'Enable' : 'Disable';
+    btn.style.background = a ? 'linear-gradient(135deg,#28a745,#34ce57)' : 'linear-gradient(135deg,#c62828,#f44336)';
+    btn.onclick = async ()=>{
+      const next = a ? '0' : '1';
+      showLoading();
+      try{
+        const r=await fetch('/dashboard/wan/auto',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,auto:next})});
+        const j=await r.json();
+        if(!r.ok){alert(j.error||'Error');}
+        else { loadWanData(); }
+      }catch(e){ alert('Unexpected error'); }
+      finally{ hideLoading(); }
+    };
+  });
+}
+async function loadInterfacesList(){
+  const resp=await fetch('/dashboard/wan/interfaces',{cache:'no-store'});
+  if(!resp.ok){console.error('Iface list');return;}
+  const lists=await resp.json();
+  const sel=document.getElementById('interfaceSelect');
+  sel.innerHTML='';
+  [...lists.physical,...lists.vlans].forEach(o=>{
+    const opt=document.createElement('option');
+    opt.value=o.value; opt.textContent=o.label; sel.appendChild(opt);
+  });
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  loadWanData();
+  loadInterfacesList();
+  // Recursive setTimeout instead of setInterval
+  function loopWanData(){
+    loadWanData().finally(() => setTimeout(loopWanData, 1000));
+  }
+  setTimeout(loopWanData, 1000);
+  const addModal=document.getElementById('addModal');
+  const addBtn=document.getElementById('addBtn');
+  const cancelBtn=document.getElementById('cancelBtn');
+  const saveBtn=document.getElementById('saveBtn');
+  const sourceLbBtn=document.getElementById('sourceLbBtn');
+  const weightLbBtn=null;
+  const sourceLbModal=document.getElementById('sourceLbModal');
+  const srcLanSelect=document.getElementById('srcLanSelect');
+  const srcPolBody=document.getElementById('srcPolBody');
+  const srcSaveBtn=document.getElementById('srcSaveBtn');
+  const srcCancelBtn=document.getElementById('srcCancelBtn');
+  const srcErr=document.getElementById('srcErr');
+  const destWanSelect=document.getElementById('destWanSelect');
+  const weightLbModal=null;
+  const weightsList=null;
+  const wSaveBtn=null;
+  const wCancelBtn=null;
+  const wErr=null;
+  const err=document.getElementById('errorMsg');
+  const typeSelect=document.getElementById('typeSelect');
+  const staticFields=document.getElementById('staticFields');
+  const dhcpFields=document.getElementById('dhcpFields');
+  const pppoeFields=document.getElementById('pppoeFields');
+  function showFields(type){
+    staticFields.style.display=(type==='static')?'block':'none';
+    dhcpFields.style.display=(type==='dhcp')?'block':'none';
+    pppoeFields.style.display=(type==='pppoe')?'block':'none';
+  }
+  addBtn.onclick=async()=>{
+    await loadInterfacesList();
+    typeSelect.value='static';showFields('static');
+    ['ip_addressInput','net_maskInput','gatewayInput','dnsInput','pppoeUser','pppoePass','commentInput']
+      .forEach(id=>document.getElementById(id).value='');
+    document.getElementById('dnsInput').value='8.8.4.4';
+    addModal.style.display='block';
+  };
+  // DNS Edit handlers
+  async function openDnsModal(targetName){
+    const list = document.getElementById('dnsList');
+    const err  = document.getElementById('dnsErr');
+    err.style.display='none'; err.textContent='';
+    list.innerHTML = '';
+    try{
+      const r = await fetch('/dashboard/wan/dns/list',{cache:'no-store'});
+      if(!r.ok){ err.textContent='Failed to load interfaces'; err.style.display='block'; return; }
+      const j = await r.json();
+      let items = j.items||[];
+      if (targetName){
+        items = items.filter(x=>String(x.name||'')===String(targetName));
+      }
+      if (!items.length){
+        err.textContent='No eligible interfaces found'; err.style.display='block';
+      }
+      // Header
+      const headLbl = document.createElement('div'); headLbl.className='dns-head lbl'; headLbl.textContent='WAN';
+      const headTog = document.createElement('div'); headTog.className='dns-head tog'; headTog.textContent='Static';
+      const headD1  = document.createElement('div'); headD1.className='dns-head d1'; headD1.textContent='DNS 1';
+      const headD2  = document.createElement('div'); headD2.className='dns-head d2'; headD2.textContent='DNS 2';
+      list.appendChild(headLbl); list.appendChild(headTog); list.appendChild(headD1); list.appendChild(headD2);
+      // Rows
+      items.forEach(it=>{
+        const rowWrap = document.createElement('div'); rowWrap.className='dns-row'; rowWrap.dataset.name = it.name;
+        const label = document.createElement('div'); label.className='dns-label'; label.textContent = it.name;
+        const tog   = document.createElement('div'); tog.className='dns-toggle';
+        const cbox  = document.createElement('input'); cbox.type='checkbox'; cbox.className='dns-static';
+        tog.appendChild(cbox);
+        const dns = Array.isArray(it.dns) ? it.dns : [];
+        const in1 = document.createElement('input'); in1.className='dns-input dns1'; in1.placeholder='1.1.1.1'; in1.value = dns[0] || '';
+        const in2 = document.createElement('input'); in2.className='dns-input dns2'; in2.placeholder='8.8.8.8'; in2.value = dns[1] || '';
+        const isStatic = (String(it.peerdns||'').trim() === '0');
+        cbox.checked = isStatic;
+        function applyDisabled(){
+          const en = cbox.checked;
+          in1.disabled = !en; in2.disabled = !en;
+        }
+        applyDisabled();
+        cbox.addEventListener('change', applyDisabled);
+        list.appendChild(label);
+        list.appendChild(tog);
+        list.appendChild(in1);
+        list.appendChild(in2);
+      });
+      document.getElementById('dnsModal').style.display='block';
+    }catch(e){
+      err.textContent='Unexpected error'; err.style.display='block';
+    }
+  }
+  window.openDnsModal = openDnsModal;
+  async function saveDnsModal(){
+    const list = document.getElementById('dnsList');
+    const rows = [];
+    // Reconstruct rows from grid: each logical row is 4 consecutive elements
+    const children = Array.from(list.children).slice(4); // skip headers
+    for (let i = 0; i < children.length; i += 4){
+      rows.push(children.slice(i, i+4));
+    }
+    const items = [];
+    function isIPv4(ip){const r=/^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/;return r.test(ip);}
+    for(const cols of rows){
+      const name = (cols[0].textContent||'').trim();
+      const cbox = cols[1].querySelector('.dns-static');
+      const in1  = cols[2];
+      const in2  = cols[3];
+      const staticOn = !!cbox.checked;
+      let dns1 = (in1.value||'').trim();
+      let dns2 = (in2.value||'').trim();
+      if (staticOn){
+        if (dns1 && !isIPv4(dns1)){ alert(`Bad DNS ${dns1}`); return; }
+        if (dns2 && !isIPv4(dns2)){ alert(`Bad DNS ${dns2}`); return; }
+      } else {
+        dns1 = ''; dns2 = '';
+      }
+      items.push({name, static: staticOn, dns1, dns2});
+    }
+    showLoading();
+    try{
+      const r = await fetch('/dashboard/wan/dns/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items})});
+      const j = await r.json();
+      if (!r.ok || !j.ok){ alert('Failed to save DNS'); }
+      else { document.getElementById('dnsModal').style.display='none'; await loadWanData(); }
+    }catch(e){ alert('Unexpected error'); }
+    finally{ hideLoading(); }
+  }
+  document.getElementById('dnsCancelBtn').onclick = ()=>{ document.getElementById('dnsModal').style.display='none'; };
+  document.getElementById('dnsSaveBtn').onclick   = saveDnsModal;
+  async function loadSourceCidrs(){
+    const r=await fetch('/dashboard/wan/source_lans',{cache:'no-store'});
+    if(!r.ok) return;
+    const j=await r.json();
+    srcLanSelect.innerHTML='';
+    (j.cidrs||[]).forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; srcLanSelect.appendChild(o); });
+  }
+  async function loadSourcePolicies(){
+    const r=await fetch('/dashboard/wan/source_policies',{cache:'no-store'});
+    if(!r.ok){ srcPolBody.innerHTML=''; return; }
+    const j=await r.json();
+    const rows=j.policies||[];
+    srcPolBody.innerHTML='';
+    rows.forEach(row=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${row.id}</td><td>${row.src}</td><td>${row.dest}</td><td><button class="delete-btn" data-id="${row.id}">Delete</button></td>`;
+      srcPolBody.appendChild(tr);
+    });
+    srcPolBody.querySelectorAll('button.delete-btn').forEach(btn=>{
+      btn.onclick=async()=>{
+        showLoading();
+    try{
+          const r=await fetch('/dashboard/wan/source_delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:parseInt(btn.getAttribute('data-id'))})});
+          const j=await r.json();
+          if(!r.ok){ alert(j.error||'Delete failed'); }
+          else { await loadSourcePolicies(); }
+        }catch(e){ alert('Unexpected error'); }
+        finally{ hideLoading(); }
+      };
+    });
+  }
+  sourceLbBtn.onclick=async()=>{
+    await loadSourceCidrs();
+    try{
+      const r=await fetch('/dashboard/wan/source_wans',{cache:'no-store'});
+      if(r.ok){ const j=await r.json(); destWanSelect.innerHTML=''; (j.wans||[]).forEach(w=>{ const o=document.createElement('option'); o.value=w; o.textContent=w; destWanSelect.appendChild(o); }); }
+    }catch(e){}
+    await loadSourcePolicies();
+    sourceLbModal.style.display='block';
+  };
+  srcCancelBtn.onclick=()=>{ sourceLbModal.style.display='none'; };
+  srcSaveBtn.onclick=async()=>{
+    srcErr.style.display='none';
+    const src=srcLanSelect.value;
+    const wans=[]; for(const o of destWanSelect.options){ if(o.selected) wans.push(o.value); }
+    const wan = wans.length ? wans : 'wan2';
+    if(!src){ srcErr.textContent='Select source CIDR'; srcErr.style.display='block'; return; }
+    showLoading();
+    try{
+      const r=await fetch('/dashboard/wan/source_add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({src,wan})});
+      const j=await r.json();
+      if(!r.ok){ srcErr.textContent=j.error||'Save failed'; srcErr.style.display='block'; }
+      else { await loadSourcePolicies(); }
+    }catch(e){ srcErr.textContent='Unexpected error'; srcErr.style.display='block'; }
+    finally{ hideLoading(); }
+  };
+  // Weight LB UI removed
+  cancelBtn.onclick=()=>addModal.style.display='none';
+  typeSelect.onchange=()=>showFields(typeSelect.value);
+  saveBtn.onclick=async()=>{
+    err.style.display='none';
+    const data={
+      type:typeSelect.value,
+      interface:document.getElementById('interfaceSelect').value,
+      comment:document.getElementById('commentInput').value.trim()
+    };
+    if(data.type==='static'){
+      data.ip_address=document.getElementById('ip_addressInput').value.trim();
+      data.net_mask=document.getElementById('net_maskInput').value.trim();
+      data.gateway=document.getElementById('gatewayInput').value.trim();
+      data.dns=document.getElementById('dnsInput').value.trim();
+      if(!(data.ip_address&&data.net_mask&&data.gateway)){
+        err.textContent='IP, Netmask and Gateway required';err.style.display='block';return;
+      }
+      if(![data.ip_address,data.net_mask,data.gateway].every(isIPv4)){
+        err.textContent='Invalid IPv4';err.style.display='block';return;
+      }
+      if(data.dns){
+        const bad=data.dns.split(',').map(x=>x.trim()).find(x=>x&&!isIPv4(x));
+        if(bad){err.textContent=`Bad DNS ${bad}`;err.style.display='block';return;}
+      }
+    }else if(data.type==='pppoe'){
+      data.username=document.getElementById('pppoeUser').value.trim();
+      data.password=document.getElementById('pppoePass').value.trim();
+      if(!(data.username&&data.password)){
+        err.textContent='Username & Password required';err.style.display='block';return;
+      }
+    }
+    showLoading();
+    try{
+      const r=await fetch('/dashboard/wan/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+      const j=await r.json();
+      if(!r.ok){err.textContent=j.error||'Error';err.style.display='block';}
+      else{addModal.style.display='none';loadWanData();}
+    }catch(e){err.textContent='Unexpected error';err.style.display='block';}
+    finally{hideLoading();}
+  };
+  window.deleteWan=async name=>{
+    if(!confirm(`Delete ${name}?`))return;
+    showLoading();
+    try{
+      const r=await fetch('/dashboard/wan/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+      const j=await r.json();
+      if(!r.ok) alert(j.error||'Delete error'); else loadWanData();
+    }catch(e){alert('Unexpected error');}
+    finally{hideLoading();}
+  };
+
+  // Speed Config UI
+  async function loadSpeedSettings(){
+    try{
+      const r=await fetch('/dashboard/wan/speed/config',{cache:'no-store'});
+      if(!r.ok)return;
+      const j=await r.json();
+      const items=j.items||[];
+      const tbody=document.getElementById('speedBody');
+      tbody.innerHTML='';
+      items.forEach(it=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td>${it.name}</td>
+          <td><input type="number" class="sp-weight" data-name="${it.name}" value="${it.weight}" min="1" max="999" style="width:120px"></td>
+          <td><input type="text" class="sp-track" data-name="${it.name}" value="${it.track_ip}" placeholder="8.8.4.4" style="width:250px"></td>`;
+        tbody.appendChild(tr);
+      });
+    }catch(e){}
+  }
+  document.getElementById('speedBtn').onclick=async()=>{
+    document.getElementById('speedErr').style.display='none';
+    await loadSpeedSettings();
+    document.getElementById('speedModal').style.display='block';
+  };
+  document.getElementById('speedCancelBtn').onclick=()=>{
+    document.getElementById('speedModal').style.display='none';
+  };
+  document.getElementById('speedSaveBtn').onclick=async()=>{
+    const rows=[];
+    document.querySelectorAll('#speedBody tr').forEach(tr=>{
+      const w=tr.querySelector('.sp-weight');
+      const t=tr.querySelector('.sp-track');
+      if(w&&t) rows.push({name:w.getAttribute('data-name'),weight:w.value,track_ip:t.value});
+    });
+    showLoading();
+    try{
+      const r=await fetch('/dashboard/wan/speed/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:rows})});
+      const j=await r.json();
+      if(!r.ok||!j.ok){
+        const err=document.getElementById('speedErr');
+        err.textContent=j.message||j.error||'Save failed';
+        err.style.display='block';
+      }else{
+        document.getElementById('speedModal').style.display='none';
+      }
+    }catch(e){
+      const err=document.getElementById('speedErr');
+      err.textContent='Unexpected error';
+      err.style.display='block';
+    }finally{hideLoading();}
+  };
+});
+</script>

@@ -1,0 +1,1043 @@
+<style>
+  .interfaces-page col.tx {
+    width: 13ch;
+  }
+
+  .interfaces-page col.rx {
+    width: 13ch;
+  }
+
+  .interfaces-page col.txbytes {
+    width: 12ch;
+  }
+
+  .interfaces-page col.rxbytes {
+    width: 12ch;
+  }
+
+  .interfaces-page col.status {
+    width: 7ch;
+  }
+
+  .interfaces-page .wb-card {
+    font-size: 0.9rem;
+    padding: 8px 10px;
+  }
+
+  .interfaces-page .wb-card h3 {
+    font-size: 1rem;
+    margin: 0 0 6px;
+  }
+
+  .interfaces-page .wb-pre {
+    font-size: 0.85rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    background: var(--bg-surface) !important;
+    color: var(--text-color) !important;
+    border: 1px solid var(--clr-gray-300) !important;
+    border-radius: 6px;
+    padding: 6px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow: auto;
+    box-sizing: border-box;
+  }
+
+  .interfaces-page #wb-health {
+    height: auto;
+    min-height: 50px;
+  }
+
+  .interfaces-page #wb-events {
+    overflow-y: auto;
+  }
+
+  .interfaces-page .wb-label {
+    display: block;
+    font-weight: 700;
+    color: var(--text-color-heading);
+    margin-bottom: 4px;
+    font-size: 0.9rem;
+  }
+
+  .interfaces-page #wb-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    margin-bottom: 6px;
+  }
+
+  .interfaces-page #wb-summary .pill {
+    padding: 2px 6px;
+    border: 1px solid var(--clr-gray-400);
+    border-radius: 999px;
+    background: var(--bg-elevated);
+    color: var(--text-color);
+  }
+
+  .interfaces-page #wb-summary .pill.ok {
+    border-color: #24b36b;
+  }
+
+  .interfaces-page #wb-summary .pill.bad {
+    border-color: #d9534f;
+  }
+
+  @keyframes wb-blink {
+    0% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.35;
+    }
+
+    100% {
+      opacity: 1;
+    }
+  }
+
+  .interfaces-page #wb-summary .pill.bad {
+    animation: wb-blink 1.1s ease-in-out infinite;
+  }
+
+  .interfaces-page .wb-split {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .interfaces-page .wb-col {
+    flex: 1 1 300px;
+    min-width: 0;
+  }
+
+  .interfaces-page .if-speedos {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 2px;
+    row-gap: 2px;
+    margin-bottom: 0.5rem;
+    overflow-x: hidden;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .interfaces-page .if-circles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 6px 0 8px;
+    justify-content: flex-start;
+  }
+
+  .interfaces-page .circle-meter {
+    flex: 1 1 180px;
+    min-width: 140px;
+    background: var(--bg-surface);
+    border: 1px solid var(--clr-gray-400);
+    border-radius: 8px;
+    padding: 2px 8px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .interfaces-page .cirmeter {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: 175px;
+    aspect-ratio: 1 / 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0.5px;
+  }
+
+  .interfaces-page .cirmeter svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .interfaces-page .cirmeter .speedo-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .interfaces-page .cirmeter .speedo-svg .bar {
+    transition: fill 150ms ease-in-out;
+  }
+
+  .interfaces-page .cirmeter .speedo-svg .bar.unfilled {
+    fill: rgba(128, 128, 128, 0.25);
+  }
+
+  .interfaces-page .cirmeter .speedo-svg .bar.filled-green {
+    fill: #24b36b;
+  }
+
+  .interfaces-page .cirmeter .speedo-svg .bar.filled-blue {
+    fill: #5865f2;
+  }
+
+  .interfaces-page .cirmeter .speedo-svg .bar.filled-yellow {
+    fill: #e0b000;
+  }
+
+  .interfaces-page .cirmeter .speedo-svg .bar.filled-red {
+    fill: #d9534f;
+  }
+
+  .interfaces-page .cirmeter-txt-col {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    line-height: 1.1;
+    pointer-events: none;
+  }
+
+  .interfaces-page .cirmeter-txt-col .val {
+    font-size: 1.6rem;
+    font-weight: 700;
+  }
+
+  .interfaces-page .cirmeter-txt-col .val-tx {
+    color: #5865f2;
+  }
+
+  .interfaces-page .cirmeter-txt-col .val-rx {
+    color: #24b36b;
+    /* Default Green */
+  }
+
+  .interfaces-page .cirmeter-txt-col .val-rx.rx-yellow {
+    color: #e0b000;
+  }
+
+  .interfaces-page .cirmeter-txt-col .val-rx.rx-red {
+    color: #d9534f;
+  }
+
+  .interfaces-page .circle-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    font-size: 0.9rem;
+    color: var(--text-color);
+    width: 100%;
+    margin-top: 0;
+    gap: 4px;
+  }
+
+  .interfaces-page .circle-info .sub-row {
+    display: flex;
+    justify-content: flex-start;
+    gap: 5px;
+    width: 100%;
+  }
+
+  .interfaces-page .circle-info .sub-row.name {
+    font-size: 1.05rem;
+    color: var(--text-color-heading);
+    margin-bottom: 6px;
+  }
+
+  .interfaces-page .circle-info .sub-row span:first-child {
+    opacity: 0.8;
+    white-space: nowrap;
+  }
+
+  .interfaces-page .circle-info .sub-row span:last-child {
+    font-weight: 600;
+  }
+
+  .interfaces-page .circle-svg-cont {
+    position: relative;
+    width: 90px;
+    height: 90px;
+    flex-shrink: 0;
+  }
+
+  .interfaces-page .circle-svg-cont svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+    /* Start circle from top */
+  }
+
+  .interfaces-page .circle-svg-cont circle {
+    fill: transparent;
+    stroke-width: 6;
+    stroke-linecap: round;
+    transition: stroke-dasharray 350ms ease-in-out;
+  }
+
+  .interfaces-page .circle-bg {
+    stroke: rgba(128, 128, 128, 0.15);
+  }
+
+  .interfaces-page .circle-tx {
+    stroke: #5865f2;
+  }
+
+  .interfaces-page .circle-rx {
+    stroke: #24b36b;
+    stroke-width: 4;
+  }
+
+  /* Rx inner circle a bit thinner */
+
+  .interfaces-page .circle-text {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    line-height: 1.1;
+    pointer-events: none;
+  }
+
+  .interfaces-page .circle-text .lbl {
+    font-size: 0.65rem;
+    opacity: 0.7;
+    font-weight: 500;
+  }
+
+  .interfaces-page .circle-text .val {
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  .interfaces-page .circle-text .val-tx {
+    color: #5865f2;
+  }
+
+  .interfaces-page .circle-text .val-rx {
+    color: #24b36b;
+  }
+
+  .interfaces-page .circle-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--text-color);
+    width: 100%;
+  }
+
+  .interfaces-page .circle-info .name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-color-heading);
+    margin-bottom: 2px;
+  }
+
+  .interfaces-page .circle-info .sub-row {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 2px;
+  }
+
+  .interfaces-page .circle-info .sub-row span:first-child {
+    opacity: 0.7;
+  }
+
+  .interfaces-page .circle-info .sub-row span:last-child {
+    font-weight: 600;
+  }
+
+  .interfaces-page .meter-label {
+    font-size: clamp(10px, 1.2vw, 15px);
+    font-weight: 700;
+    color: var(--text-color-heading);
+  }
+
+  .interfaces-page .meter-track {
+    width: 100%;
+    height: 16px;
+    background: rgba(128, 128, 128, 0.25);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .interfaces-page .meter-fill {
+    height: 100%;
+    width: 0%;
+    transition: width 350ms ease-in-out, background-color 150ms ease-in-out;
+    background-color: #24b36b;
+  }
+
+  .interfaces-page .meter-fill.yellow {
+    background-color: #e0b000;
+  }
+
+  .interfaces-page .meter-fill.red {
+    background-color: #d9534f;
+  }
+
+  .interfaces-page .meter-fill.flow {
+    background-image: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.18) 50%, rgba(255, 255, 255, 0) 100%);
+    background-size: 200% 100%;
+    animation: meter-flow 1.2s linear infinite;
+  }
+
+  .interfaces-page .speedo-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 6px 8px 0;
+    font-weight: 700;
+    color: var(--text-color-heading);
+  }
+
+  .interfaces-page .speedo-title .pill {
+    font-size: 0.75rem;
+    padding: 1px 6px;
+    border: 1px solid var(--clr-gray-400);
+    border-radius: 999px;
+    background: var(--bg-elevated);
+    color: var(--text-color);
+  }
+
+  .interfaces-page .speedo-title .pill.ok {
+    border-color: #24b36b;
+  }
+
+  .interfaces-page .speedo-title .pill.bad {
+    border-color: #d9534f;
+    animation: wb-blink 1.1s ease-in-out infinite;
+  }
+
+  .interfaces-page .speedo-title #title-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @keyframes meter-flow {
+    0% {
+      background-position: 200% 0;
+    }
+
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  .interfaces-page .speedo-meta {
+    font-size: clamp(9px, 1.1vw, 13px);
+    color: var(--text-color);
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 3px 10px;
+    padding: 2px 8px 8px;
+    width: 100%;
+  }
+
+  .interfaces-page .speedo-meta .k {
+    opacity: 0.8;
+  }
+
+  .interfaces-page .speedo-meta span {
+    min-width: 0;
+    word-break: break-word;
+  }
+
+  .interfaces-page .speedo-value {
+    font-weight: bold;
+    font-size: 0.95rem;
+  }
+
+  .interfaces-page .speedo-label {
+    font-size: 0.85rem;
+    white-space: nowrap;
+    display: none;
+  }
+
+  /* Responsive adjustments for circle-meter */
+  @media (max-width: 1024px) {
+    .interfaces-page .circle-meter {
+      flex: 0 0 calc(33.333% - 8px);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .interfaces-page .circle-meter {
+      flex: 0 0 calc(50% - 8px);
+    }
+  }
+
+  @media (max-width: 520px) {
+    .interfaces-page {
+      padding: 0;
+    }
+
+    .interfaces-page .wb-card {
+      width: 100%;
+      box-sizing: border-box;
+      border-radius: 0;
+      margin: 0;
+    }
+
+    .interfaces-page .if-circles {
+      padding: 0 4px;
+      justify-content: space-around;
+    }
+
+    .interfaces-page .circle-meter {
+      flex: 0 0 calc(50% - 8px);
+      padding: 8px 4px;
+    }
+  }
+
+  @keyframes iface-color-toggle {
+    0% {
+      color: var(--text-color-heading);
+    }
+
+    100% {
+      color: #e74c3c;
+    }
+  }
+
+  .interfaces-page .blink-red {
+    animation: iface-color-toggle 1.2s ease-in-out infinite alternate;
+  }
+
+  /* Traffic charts */
+  .interfaces-page .traf-section {
+    margin-top: 10px;
+  }
+
+  .interfaces-page .traf-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+
+  .interfaces-page .traf-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-color-heading);
+    margin: 0;
+  }
+
+  .interfaces-page .traf-legend {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.85rem;
+    color: var(--text-color);
+    opacity: 0.9;
+  }
+
+  .interfaces-page .traf-legend .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .interfaces-page .traf-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .interfaces-page .traf-item {
+    flex: 1 1 280px;
+    min-width: 260px;
+    max-width: 420px;
+    background: var(--bg-surface);
+    border: 1px solid var(--clr-gray-400);
+    border-radius: 8px;
+    padding: 8px;
+  }
+
+  .interfaces-page .traf-name {
+    font-weight: 700;
+    color: var(--text-color-heading);
+    margin-bottom: 6px;
+  }
+
+  .interfaces-page .traf-canvas {
+    width: 100%;
+    height: 180px;
+    display: block;
+  }
+</style>
+<div class="interfaces-page">
+  <div class="card wb-card" style="margin-bottom:10px;">
+    <h3 style="margin-top:0;">WanBlendr Status</h3>
+    <div id="wb-summary"></div>
+    <div class="wb-split">
+      <div class="wb-col">
+        <div class="wb-label">health</div>
+        <pre id="wb-health" class="wb-pre"></pre>
+      </div>
+      <div class="wb-col">
+        <div class="wb-label">Event</div>
+        <pre id="wb-events" class="wb-pre"></pre>
+      </div>
+    </div>
+  </div>
+  <div id="if-circles" class="if-circles" aria-label="Interfaces Circular Meters"></div>
+</div>
+<script>
+  let collapsedParents = new Set();
+  function parseInterfaceType(ifaceName) {
+    let mVlan = ifaceName.match(/^eth(\d+)\.(\d+)$/);
+    if (mVlan) return { type: 'eth', index: parseInt(mVlan[1], 10), vlanId: parseInt(mVlan[2], 10), isVlan: true };
+    let mEth = ifaceName.match(/^eth(\d+)$/);
+    if (mEth) return { type: 'eth', index: parseInt(mEth[1], 10), isVlan: false };
+    let mPppoe = ifaceName.match(/^PPPoE-(\d+)$/);
+    if (mPppoe) return { type: 'pppoe', index: parseInt(mPppoe[1], 10) };
+    let mPptp = ifaceName.match(/^PPtP-(\d+)$/);
+    if (mPptp) return { type: 'pptp', index: parseInt(mPptp[1], 10) };
+    let mEoip = ifaceName.match(/^EoIP-(\d+)$/);
+    if (mEoip) return { type: 'zeoip', index: parseInt(mEoip[1], 10) };
+    return { type: 'other' };
+  }
+  function groupAndSortInterfaces(interfaces) {
+    let ethMap = {};
+    let pppoeList = [], pptpList = [], zeoipList = [], others = [];
+    interfaces.forEach(iface => {
+      let parsed = parseInterfaceType(iface.name);
+      if (parsed.type === 'eth') {
+        let idx = parsed.index;
+        if (!ethMap[idx]) ethMap[idx] = { parent: null, vlans: [] };
+        if (parsed.isVlan) ethMap[idx].vlans.push(iface);
+        else ethMap[idx].parent = iface;
+      } else if (parsed.type === 'pppoe') pppoeList.push(iface);
+      else if (parsed.type === 'pptp') pptpList.push(iface);
+      else if (parsed.type === 'zeoip') zeoipList.push(iface);
+      else others.push(iface);
+    });
+    function parseIndex(name) {
+      let m = name.match(/(\d+)$/);
+      return m ? parseInt(m[1], 10) : 0;
+    }
+    pppoeList.sort((a, b) => parseIndex(a.name) - parseIndex(b.name));
+    pptpList.sort((a, b) => parseIndex(a.name) - parseIndex(b.name));
+    zeoipList.sort((a, b) => parseIndex(a.name) - parseIndex(b.name));
+    let ethKeys = Object.keys(ethMap).map(k => parseInt(k, 10)).sort((a, b) => a - b);
+    let finalList = [];
+    ethKeys.forEach(k => {
+      let g = ethMap[k];
+      if (g.parent) finalList.push(g.parent);
+      g.vlans.sort((a, b) => {
+        let mA = a.name.match(/^eth\d+\.(\d+)$/);
+        let mB = b.name.match(/^eth\d+\.(\d+)$/);
+        let va = mA ? parseInt(mA[1], 10) : 0;
+        let vb = mB ? parseInt(mB[1], 10) : 0;
+        return va - vb;
+      });
+      g.vlans.forEach(v => finalList.push(v));
+    });
+    finalList.push(...pppoeList, ...pptpList, ...zeoipList, ...others);
+    return finalList;
+  }
+  function createInterfaceRow(iface, isVlanChild = false, parentDevice = null) {
+    let tr = document.createElement('tr');
+    tr.id = 'iface-' + iface.device;
+    if (isVlanChild && parentDevice) {
+      tr.dataset.parent = parentDevice;
+      tr.classList.add('vlan-child');
+    } else {
+      tr.classList.add('parent-row');
+    }
+    tr.innerHTML = `
+    <td class="name"></td>
+    <td class="mac"></td>
+    <td class="link-speed"></td>
+    <td class="upcount"></td>
+    <td class="tx"></td>
+    <td class="rx"></td>
+    <td class="tx_bytes"></td>
+    <td class="rx_bytes"></td>
+    <td class="status"></td>
+  `;
+    const tdName = tr.querySelector('.name');
+    const tdMac = tr.querySelector('.mac');
+    const tdLink = tr.querySelector('.link-speed');
+    const tdUpCount = tr.querySelector('.upcount');
+    const tdTx = tr.querySelector('.tx');
+    const tdRx = tr.querySelector('.rx');
+    const tdTxBytes = tr.querySelector('.tx_bytes');
+    const tdRxBytes = tr.querySelector('.rx_bytes');
+    const tdStatus = tr.querySelector('.status');
+    tdName.textContent = iface.name; tdName.title = iface.name;
+    tdMac.textContent = iface.mac || 'N/A'; tdMac.title = tdMac.textContent;
+    tdLink.textContent = (iface.link_speed ? iface.link_speed : 'N/A') + '/' + (iface.duplex ? iface.duplex : 'N/A');
+    tdLink.title = tdLink.textContent;
+    tdUpCount.textContent = (typeof iface.up_count === 'number' ? iface.up_count : (iface.up_count || '0'));
+    tdUpCount.title = tdUpCount.textContent;
+    tdTx.textContent = iface.tx; tdTx.title = tdTx.textContent;
+    tdRx.textContent = iface.rx; tdRx.title = tdRx.textContent;
+    tdTxBytes.textContent = iface.tx_bytes; tdTxBytes.title = tdTxBytes.textContent;
+    tdRxBytes.textContent = iface.rx_bytes; tdRxBytes.title = tdRxBytes.textContent;
+    tdStatus.textContent = iface.status; tdStatus.title = tdStatus.textContent;
+    if (iface.status === 'Up+') tr.classList.add('interfaces-up');
+    else if (iface.status === 'Down-') tr.classList.add('interfaces-down');
+    try {
+      if (iface.status === 'Down-' && (/^eth\d+$/.test(iface.name) || /^SFP\+$/.test(iface.name))) {
+        tdName.classList.add('blink-red');
+      }
+    } catch (_) { }
+    return tr;
+  }
+  function toggleChildRows(parentDev) {
+    const tbody = document.getElementById('interfaces-body');
+    let childRows = tbody.querySelectorAll(`tr[data-parent="${parentDev}"]`);
+    childRows.forEach(cr => cr.classList.toggle('hidden-row'));
+  }
+  async function pollInterfacesData() {
+    try {
+      const r = await fetch('/api/interfaces', { cache: 'no-store' });
+      if (!r.ok) return;
+      const text = await r.text();
+      let json;
+      try { json = JSON.parse(text); } catch (_) { return; }
+      if (!json || !Array.isArray(json.interfaces)) return;
+      updateVerticalMeters(json.interfaces);
+    } catch (_) { }
+  }
+  document.addEventListener('DOMContentLoaded', () => {
+    pollInterfacesData();
+    // Staggered scheduling to avoid UI freeze
+    let pollingInterfaces = false;
+    async function safePollInterfaces() {
+      if (pollingInterfaces) return;
+      pollingInterfaces = true;
+      try { await pollInterfacesData(); }
+      catch (_) { }
+      finally { pollingInterfaces = false; setTimeout(safePollInterfaces, 1000); }
+    }
+    setTimeout(safePollInterfaces, 1000);
+
+    loadWbStatus();
+    setTimeout(function loopStatus() {
+      loadWbStatus().finally(() => setTimeout(loopStatus, 5000));
+    }, 2500);
+  });
+  function _parseMbps(human) {
+    try {
+      const s = String(human || '').trim();
+      if (!s || s.toLowerCase() === 'n/a') return 0;
+      const m = s.match(/([0-9]+(?:\.[0-9]+)?)\s*([a-zA-Z]+)\b/);
+      if (!m) return 0;
+      const n = parseFloat(m[1]);
+      const u = m[2].toLowerCase();
+      if (u === 'gbps' || u === 'gb/s' || u === 'g' || u === 'gbit/s' || u === 'gbitps') return n * 1000;
+      if (u === 'mbps' || u === 'mb/s' || u === 'm' || u === 'mbit/s' || u === 'mbitps') return n;
+      if (u === 'kbps' || u === 'kb/s' || u === 'k' || u === 'kbit/s' || u === 'kbitps') return n / 1000;
+      if (u === 'bps' || u === 'b/s' || u === 'bit/s' || u === 'bitps') return n / 1000000;
+      return n; // default assume Mbps
+    } catch (_) { return 0; }
+  }
+  function _cssVar(name, fallback) {
+    try {
+      const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      return v || fallback;
+    } catch (_) { return fallback; }
+  }
+  function _formatTimeLabel(ts) {
+    try {
+      const d = new Date(ts);
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      const ss = String(d.getSeconds()).padStart(2, '0');
+      return hh + ':' + mm + ':' + ss;
+    } catch (_) { return ''; }
+  }
+  function _niceStep(raw) {
+    try {
+      if (!isFinite(raw) || raw <= 0) return 1;
+      const p = Math.pow(10, Math.floor(Math.log10(raw)));
+      const mant = raw / p;
+      let stepMant = 1;
+      if (mant <= 1) stepMant = 1;
+      else if (mant <= 2) stepMant = 2;
+      else if (mant <= 5) stepMant = 5;
+      else stepMant = 10;
+      return stepMant * p;
+    } catch (_) { return 1; }
+  }
+
+  function _formatBitsPerSecondFromMbps(mbps) {
+    const bits = Math.max(0, Number(mbps) || 0) * 1e6; // Mbps -> bit/s
+    if (bits >= 1e9) return (bits / 1e9).toFixed(bits >= 1e10 ? 0 : 2) + ' Gb';
+    if (bits >= 1e6) return (bits / 1e6).toFixed(bits >= 1e7 ? 0 : 1) + ' Mb';
+    if (bits >= 1e3) return (bits / 1e3).toFixed(bits >= 1e4 ? 0 : 0) + ' Kb';
+    return bits.toFixed(0) + ' b';
+  }
+  function _isParentEthOrSfp(displayName) {
+    if (!displayName) return false;
+    const n = String(displayName);
+    if (n.startsWith('eth') && n.indexOf('.') === -1) return true;
+    if (n.startsWith('SFP+') && n.indexOf('.') === -1) return true;
+    return false;
+  }
+
+  function updateVerticalMeters(interfaces) {
+    const cont = document.getElementById('if-circles');
+    if (!cont) return;
+    const parents = [];
+    for (let i = 0; i < interfaces.length; i++) {
+      const row = interfaces[i];
+      if (_isParentEthOrSfp(row && row.name)) parents.push(row);
+    }
+
+    // Animation helpers
+    const state = (window.__ifVertState = window.__ifVertState || {});
+    function tween(start, end, t) { return start + (end - start) * t; }
+    function easeInOutCubic(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+
+    function animateBars(dev, type, fromCount, toCount, colorClass, durationMs) {
+      const g = document.getElementById('cirm-bars-' + type + '-' + dev);
+      if (!g) return;
+      const bars = g.querySelectorAll('.bar');
+      const startTs = performance.now();
+      function apply(count) {
+        for (let i = 0; i < bars.length; i++) {
+          const el = bars[i];
+          el.classList.remove('filled-green', 'filled-blue', 'filled-yellow', 'filled-red');
+          if (i < count) {
+            el.classList.add(colorClass);
+            el.classList.remove('unfilled');
+          } else {
+            // Also ensure we remove the target color if it's an empty bar
+            el.classList.remove(colorClass);
+            el.classList.add('unfilled');
+          }
+        }
+      }
+      function step(now) {
+        const p = Math.min(1, (now - startTs) / (durationMs || 400));
+        const t = easeInOutCubic(p);
+        const cur = Math.round(tween(fromCount, toCount, t));
+        apply(cur);
+        if (p < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    for (let i = 0; i < parents.length; i++) {
+      const row = parents[i];
+      const dev = String(row.device || ('d' + i)).replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+
+      // Check if exists
+      if (!document.getElementById('circ-wrap-' + dev)) {
+        const name = String(row.name || dev);
+        const wrap = document.createElement('div');
+        wrap.className = 'circle-meter';
+        wrap.id = 'circ-wrap-' + dev;
+
+        const BAR_COUNT = 48;
+        let barsTx = '';
+        let barsRx = '';
+        for (let b = 0; b < BAR_COUNT; b++) {
+          const angle = (360 / BAR_COUNT) * b;
+          // Outer tx bars (start almost at the absolute edge)
+          barsTx += '<rect class="bar unfilled" x="49.25" y="0.5" width="1.5" height="8" rx="0.5" ry="0.5" transform="rotate(' + angle + ' 50 50)" />';
+          // Inner rx bars (same width, aligned neatly below outer)
+          barsRx += '<rect class="bar unfilled" x="49.25" y="9.5" width="1.5" height="8" rx="0.5" ry="0.5" transform="rotate(' + angle + ' 50 50)" />';
+        }
+
+        const svg = `
+          <div class="cirmeter">
+            <svg class="speedo-svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+              <g id="cirm-bars-tx-${dev}">${barsTx}</g>
+              <g id="cirm-bars-rx-${dev}">${barsRx}</g>
+            </svg>
+            <div class="cirmeter-txt-col">
+              <span class="val val-tx" id="circ-tx-val-${dev}">0</span>
+              <span style="height:2px"></span>
+              <span class="val val-rx" id="circ-rx-val-${dev}">0</span>
+            </div>
+          </div>
+        `;
+
+        const info = `
+        <div class="circle-info">
+          <div class="sub-row name">
+            <span>Name:</span>
+            <span id="circ-name-${dev}">${name}</span>
+          </div>
+          
+          <div class="sub-row">
+            <span>MAC:</span>
+            <span id="circ-mac-${dev}">--</span>
+          </div>
+          
+          <div class="sub-row">
+             <span>Speed:</span>
+             <span id="circ-spd-${dev}">--</span>
+          </div>
+
+          <div class="sub-row">
+             <span>TxBytes:</span>
+             <span id="circ-txb-${dev}">0</span>
+          </div>
+          
+          <div class="sub-row">
+             <span>RxBytes:</span>
+             <span id="circ-rxb-${dev}">0</span>
+          </div>
+          
+          <div class="sub-row" style="margin-top:2px; border-top:1px solid rgba(255,255,255,0.1); padding-top:2px;">
+             <span>Status:</span>
+             <span id="circ-st-${dev}">--</span>
+          </div>
+        </div>
+      `;
+
+        wrap.innerHTML = svg + info;
+        cont.appendChild(wrap);
+      }
+
+      // Update Text Data
+      const elName = document.getElementById('circ-name-' + dev);
+      const elMac = document.getElementById('circ-mac-' + dev);
+      const elSpd = document.getElementById('circ-spd-' + dev);
+      const elTxV = document.getElementById('circ-tx-val-' + dev);
+      const elRxV = document.getElementById('circ-rx-val-' + dev);
+      const elTxb = document.getElementById('circ-txb-' + dev);
+      const elRxb = document.getElementById('circ-rxb-' + dev);
+      const elSt = document.getElementById('circ-st-' + dev);
+
+      if (elName) elName.textContent = row.name || dev;
+      if (elMac) elMac.textContent = row.mac || 'N/A';
+
+      if (elSpd) {
+        const rawSpd = (row.link_speed || '').split('/')[0].trim();
+        elSpd.textContent = rawSpd || 'N/A';
+        // Basic speed coloring
+        const val = parseFloat(rawSpd);
+        if (!isNaN(val)) {
+          if (rawSpd.toLowerCase().includes('g') || val >= 1000) elSpd.style.color = '#24b36b';
+          else elSpd.style.color = '';
+        }
+      }
+
+      const fmtTx = _formatBitsPerSecondFromMbps(_parseMbps(row.tx));
+      const fmtRx = _formatBitsPerSecondFromMbps(_parseMbps(row.rx));
+
+      // Split into value and unit to fit circle nicely: '1.2 Gbps' -> '1.2G' or so?
+      // Let's keep it simple and just use the formatted string since we made font size smaller
+      if (elTxV) elTxV.textContent = fmtTx;
+      if (elRxV) elRxV.textContent = fmtRx;
+
+      if (elTxb) elTxb.textContent = row.tx_bytes || '0';
+      if (elRxb) elRxb.textContent = row.rx_bytes || '0';
+
+      // Status Logic
+      const st = (row.status || '').toLowerCase();
+      const isUp = st.includes('up');
+      if (elSt) {
+        elSt.textContent = row.status || 'Down';
+        elSt.style.color = isUp ? '#24b36b' : '#d9534f';
+      }
+      if (elName) {
+        elName.classList.remove('blink-red');
+        if (!isUp) elName.classList.add('blink-red');
+      }
+
+      // Animate Rings
+      const MAX_SCALE_MBPS = 1000;
+      const txVal = _parseMbps(row.tx);
+      const rxVal = _parseMbps(row.rx);
+
+      const txRatio = Math.max(0, Math.min(1, txVal / MAX_SCALE_MBPS));
+      const rxRatio = Math.max(0, Math.min(1, rxVal / MAX_SCALE_MBPS));
+
+      const txTarget = Math.round(txRatio * 48); // 48 bars
+      const rxTarget = Math.round(rxRatio * 48); // 48 bars
+
+      const s = state[dev] || { tx: 0, rx: 0 };
+
+      // Determine Rx Color
+      let rxColorClass = 'filled-green';
+      if (rxVal >= 601) rxColorClass = 'filled-red';
+      else if (rxVal >= 251) rxColorClass = 'filled-yellow';
+
+      if (elRxV) {
+        elRxV.classList.remove('rx-yellow', 'rx-red');
+        if (rxVal >= 601) elRxV.classList.add('rx-red');
+        else if (rxVal >= 251) elRxV.classList.add('rx-yellow');
+      }
+
+      animateBars(dev, 'tx', s.tx, txTarget, 'filled-blue', 450);
+      animateBars(dev, 'rx', s.rx, rxTarget, rxColorClass, 450);
+
+      state[dev] = { tx: txTarget, rx: rxTarget };
+    }
+  }
+
+  let lastWbSig = '';
+  async function loadWbStatus() {
+    try {
+      const r = await fetch('/dashboard/wb/status_detail', { cache: 'no-store' });
+      if (!r.ok) return;
+      const j = await r.json();
+
+      // Check signature to avoid unnecessary DOM updates
+      const sigObj = {
+        h: (j.health && j.health.raw) || [],
+        e: j.events || [],
+        r: (j.health && j.health.rows) || [],
+        w: j.status_web || {}
+      };
+      const sig = JSON.stringify(sigObj);
+      if (sig === lastWbSig) return;
+      lastWbSig = sig;
+
+      const healthRaw = sigObj.h.join('\n');
+      const eventsRaw = sigObj.e.join('\n');
+      const rows = sigObj.r;
+      const statusWeb = sigObj.w;
+
+      const summary = document.getElementById('wb-summary');
+      if (summary) {
+        summary.innerHTML = '';
+        rows.forEach(row => {
+          const pill = document.createElement('div');
+          const stWeb = String(statusWeb[row.wan] || '').toLowerCase();
+          const ok = (stWeb === 'online') ? true : (stWeb === 'offline' ? false : ((row.status || '').toLowerCase() === 'online'));
+          pill.className = 'pill ' + (ok ? 'ok' : 'bad');
+          const txtStatus = stWeb ? stWeb : (row.status || '');
+          pill.textContent = row.wan + ' — ' + txtStatus + (row.code ? ' (' + row.code + ')' : '');
+          summary.appendChild(pill);
+        });
+      }
+      const hEl = document.getElementById('wb-health');
+      if (hEl) {
+        hEl.style.height = 'auto';
+        hEl.textContent = healthRaw || '--';
+      }
+      const eEl = document.getElementById('wb-events');
+      if (eEl) {
+        eEl.textContent = eventsRaw || '--';
+        if (hEl) eEl.style.height = hEl.offsetHeight + 'px';
+      }
+    } catch (_) { }
+  }
+</script>

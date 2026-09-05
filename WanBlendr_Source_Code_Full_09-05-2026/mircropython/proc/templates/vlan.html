@@ -1,0 +1,261 @@
+<style>
+.container-vlan { margin-top: 0.5rem; }
+.table-container { margin-top: 1.25rem; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: monospace;
+}
+th, td {
+  border: 1px solid var(--clr-gray-400);
+  padding: 0.5rem 0.75rem;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+th {
+  background: linear-gradient(180deg, var(--clr-gray-600) 0%, var(--clr-gray-700) 100%);
+  color: var(--text-color-heading);
+}
+.add-btn, .delete-btn, .save-btn, .cancel-btn {
+  color: #fff;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  border-radius: var(--border-radius-base, 6px);
+  transition: background-position 0.3s;
+  background-size: 200% 200%;
+}
+.add-btn    { background-image: var(--gradient-primary); }
+.delete-btn { background-image: var(--gradient-danger); }
+.save-btn   { background-image: var(--gradient-success); }
+.cancel-btn { background-image: var(--gradient-primary); }
+.add-btn:hover, .delete-btn:hover, .save-btn:hover, .cancel-btn:hover {
+  background-position: right center;
+}
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: .625rem;
+}
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  inset: 0;
+  overflow: auto;
+  background-color: rgba(0,0,0,0.5);
+}
+.modal-content {
+  background: var(--bg-surface);
+  background-image: linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-elevated) 100%);
+  margin: 6rem auto;
+  padding: 1.25rem;
+  width: 300px;
+  border-radius: var(--border-radius-base, 6px);
+  color: var(--text-color-heading);
+  box-shadow: var(--shadow-lg, 0 12px 32px rgba(0,0,0,.4));
+}
+.modal-content h3 { margin-top: 0; }
+.modal-content label { display: block; margin-bottom: .3125rem; }
+.modal-content select, .modal-content input {
+  width: 100%;
+  margin-bottom: .625rem;
+  padding: .5rem;
+  background: var(--bg-elevated);
+  color: var(--text-color);
+  border: 1px solid var(--clr-gray-400);
+  border-radius: var(--border-radius-base, 6px);
+}
+.modal-buttons { display: flex; justify-content: flex-end; gap: .625rem; }
+.error-msg { color: var(--clr-danger); margin-bottom: .625rem; }
+#processingModal {
+  display: none;
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  background-color: rgba(0,0,0,0.7);
+  justify-content: center;
+  align-items: center;
+}
+.spinner {
+  border: 8px solid #f3f3f3;
+  border-top: 8px solid var(--clr-primary);
+  border-radius: 50%;
+  width: 60px; height: 60px;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+</style>
+<div class="container-vlan">
+  <div class="table-container">
+    <div class="header-row">
+      <div><strong>VLAN Configuration</strong></div>
+      <button class="add-btn" id="addBtn">Add Batch</button>
+    </div>
+    <table id="vlan-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>NIC</th>
+          <th>VLAN ID</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+<div class="modal" id="addModal">
+  <div class="modal-content">
+    <h3>Add VLAN Batch</h3>
+    <div class="error-msg" id="errorMsg" style="display:none;"></div>
+    <label for="nicSelect">NIC:</label>
+    <select id="nicSelect"></select>
+    <label for="startVidInput">Start VLAN:</label>
+    <input type="number" id="startVidInput" min="1" max="4060" />
+    <label for="endVidInput">End VLAN:</label>
+    <input type="number" id="endVidInput" min="1" max="4060" />
+    <div class="modal-buttons">
+      <button class="save-btn" id="saveBtn">Save</button>
+      <button class="cancel-btn" id="cancelBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+<div id="processingModal">
+  <div class="spinner"></div>
+  <div style="color:#fff; margin-top: 12px;">Processing, please wait...</div>
+</div>
+<script>
+async function fetchJSON(url, options) {
+  const resp = await fetch(url, options || {});
+  const text = await resp.text();
+  let data;
+  try { data = JSON.parse(text); } catch (e) { throw new Error('Invalid JSON: ' + text); }
+  if (!resp.ok) {
+    const msg = (data && data.error) ? data.error : ('HTTP ' + resp.status);
+    throw new Error(msg);
+  }
+  return data;
+}
+async function loadTable() {
+  const tbody = document.querySelector('#vlan-table tbody');
+  tbody.innerHTML = '';
+  try {
+    const data = await fetchJSON('/dashboard/vlan/data');
+    data.forEach(d => {
+      const tr = document.createElement('tr');
+      const name = d.name || '';
+      const type = d.vlan_type || '';
+      const nic  = d.nic || '';
+      const vid  = d.vlan_id || '';
+      tr.innerHTML = `
+        <td>${name}</td>
+        <td>${type}</td>
+        <td>${nic}</td>
+        <td>${vid}</td>
+        <td><button class="delete-btn" data-nic="${nic}" data-vid="${vid}">Delete</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+    tbody.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const nic = btn.getAttribute('data-nic');
+        const vid = btn.getAttribute('data-vid');
+        deleteVlan(nic, vid);
+      });
+    });
+  } catch (e) {
+    alert('Failed to load VLAN table: ' + e.message);
+  }
+}
+async function loadEths() {
+  const nicSelect = document.getElementById('nicSelect');
+  nicSelect.innerHTML = '';
+  try {
+    const eths = await fetchJSON('/dashboard/vlan/eths');
+    eths.forEach(e => {
+      const opt = document.createElement('option');
+      opt.value = e; opt.textContent = e;
+      nicSelect.appendChild(opt);
+    });
+  } catch (e) {
+    alert('Failed to load NIC list: ' + e.message);
+  }
+}
+document.getElementById('addBtn').addEventListener('click', async () => {
+  document.getElementById('startVidInput').value = '';
+  document.getElementById('endVidInput').value   = '';
+  document.getElementById('errorMsg').style.display = 'none';
+  document.getElementById('errorMsg').textContent   = '';
+  await loadEths();
+  document.getElementById('addModal').style.display = 'block';
+});
+document.getElementById('cancelBtn').addEventListener('click', () => {
+  document.getElementById('addModal').style.display = 'none';
+});
+document.getElementById('saveBtn').addEventListener('click', async () => {
+  const nic = document.getElementById('nicSelect').value;
+  const start_vlan = document.getElementById('startVidInput').value;
+  const end_vlan   = document.getElementById('endVidInput').value;
+  const errBox     = document.getElementById('errorMsg');
+  const overlay    = document.getElementById('processingModal');
+  errBox.style.display = 'none';
+  errBox.textContent   = '';
+  if (!start_vlan || !end_vlan) {
+    errBox.style.display = 'block';
+    errBox.textContent = 'Please enter both start and end VLAN values.';
+    return;
+  }
+  const s = Number(start_vlan), e = Number(end_vlan);
+  if (s < 1 || e > 4060 || s > e) {
+    errBox.style.display = 'block';
+    errBox.textContent = 'Invalid VLAN range. Ensure 1 <= Start <= End <= 4060.';
+    return;
+  }
+  overlay.style.display = 'flex';
+  try {
+    const res = await fetchJSON('/dashboard/vlan/add_batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nic, start_vlan, end_vlan })
+    });
+    document.getElementById('addModal').style.display = 'none';
+    await loadTable();
+    alert(res.message || 'Batch added.');
+  } catch (e) {
+    errBox.style.display = 'block';
+    errBox.textContent = e.message;
+  } finally {
+    overlay.style.display = 'none';
+  }
+});
+window.addEventListener('click', (ev) => {
+  const addModal = document.getElementById('addModal');
+  if (ev.target === addModal) {
+    addModal.style.display = 'none';
+  }
+});
+async function deleteVlan(nic, vlan_id) {
+  if (!confirm(`Delete VLAN ${nic}.${vlan_id}?`)) return;
+  const overlay = document.getElementById('processingModal');
+  overlay.style.display = 'flex';
+  try {
+    await fetchJSON('/dashboard/vlan/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nic, vlan_id })
+    });
+    await loadTable();
+  } catch (e) {
+    alert(e.message || 'Failed to delete VLAN.');
+  } finally {
+    overlay.style.display = 'none';
+  }
+}
+window.addEventListener('DOMContentLoaded', loadTable);
+</script>

@@ -1,0 +1,123 @@
+<style>
+.wifi-row      {display:flex;gap:1rem;flex-wrap:wrap}
+.wifi-box      {flex:1 1 380px;background:var(--bg-surface);color:var(--text-color);padding:1rem;border-radius:6px;box-shadow:var(--shadow-sm)}
+.wifi-box h2   {margin-top:0;font-size:1.2rem;color:var(--text-color-heading)}
+.wifi-box label{display:block;margin:.45rem 0 .2rem}
+.wifi-box input[type=text],
+.wifi-box input[type=password]{width:100%;padding:.4rem;border:1px solid var(--clr-gray-400);border-radius:4px;background:var(--bg-elevated);color:var(--text-color)}
+.radio-row     {display:flex;gap:1rem;margin:.35rem 0}
+.wifi-box button{margin-top:.8rem;padding:.5rem 1.4rem;border:0;border-radius:6px;background-image:var(--gradient-primary);color:#fff;cursor:pointer;background-size:200% 200%;transition:background-position .2s}
+.wifi-box button:hover{background-position:right center}
+.msg           {padding:.45rem;margin:.3rem 0;border-radius:6px}
+.msg.error     {background:var(--clr-danger)}
+.msg.success   {background:var(--clr-success)}
+.pwd-row       {display:flex;align-items:center;gap:.5rem}
+.toggle-btn    {padding:.4rem .7rem;border:0;border-radius:6px;background:var(--bg-elevated);color:var(--text-color-heading);cursor:pointer;border:1px solid var(--clr-gray-400)}
+.toggle-btn:hover{filter:brightness(1.05)}
+#overlay       {position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);display:none;z-index:999;align-items:center;justify-content:center}
+#bar-wrap      {width:60%;max-width:420px;background:var(--bg-elevated);border-radius:8px;overflow:hidden;border:1px solid var(--clr-gray-400)}
+#bar           {width:0;height:18px;background:var(--clr-success)}
+</style>
+<div class="wifi-row">
+  <div class="wifi-box" id="box-24">
+    <h2>Wireless 2.4 GHz</h2>
+    <div class="msg" id="msg-24" style="display:none"></div>
+    <label>Status:</label>
+    <div class="radio-row">
+      <label><input type="radio" name="en24" value="0"> Enable</label>
+      <label><input type="radio" name="en24" value="1"> Disable</label>
+    </div>
+    <label>Wireless Name (SSID):</label>
+    <input type="text" id="ssid24" maxlength="32" pattern="[A-Za-z0-9_\\-]{1,32}">
+    <label>SSID Password:</label>
+    <div class="pwd-row">
+      <input type="password" id="key24" maxlength="63">
+      <button class="toggle-btn" onclick="togglePwd('24')">Show</button>
+    </div>
+    <button onclick="save('radio0')">Save</button>
+  </div>
+  <div class="wifi-box" id="box-5">
+    <h2>Wireless 5 GHz</h2>
+    <div class="msg" id="msg-5" style="display:none"></div>
+    <label>Status:</label>
+    <div class="radio-row">
+      <label><input type="radio" name="en5" value="0"> Enable</label>
+      <label><input type="radio" name="en5" value="1"> Disable</label>
+    </div>
+    <label>Wireless Name (SSID):</label>
+    <input type="text" id="ssid5" maxlength="32" pattern="[A-Za-z0-9_\\-]{1,32}">
+    <label>SSID Password:</label>
+    <div class="pwd-row">
+      <input type="password" id="key5" maxlength="63">
+      <button class="toggle-btn" onclick="togglePwd('5')">Show</button>
+    </div>
+    <button onclick="save('radio1')">Save</button>
+  </div>
+</div>
+<div id="overlay">
+  <div id="bar-wrap"><div id="bar"></div></div>
+</div>
+<script>
+async function fetchData(){
+  const r = await fetch('/dashboard/wireless/data');
+  if(!r.ok) return;
+  const d = await r.json();
+  setBox('24', d.radio0);
+  setBox('5',  d.radio1);
+}
+function setBox(tag,obj){
+  document.querySelectorAll('input[name=en'+tag+']').forEach(el=>{
+    el.checked = (el.value === String(obj.disabled||0));
+  });
+  document.getElementById('ssid'+tag).value = obj.ssid || '';
+  document.getElementById('key' +tag).value = obj.key  || '';
+  document.getElementById('key' +tag).type  = 'password';
+  getToggleBtn(tag).innerText = 'Show';
+}
+function getToggleBtn(tag){
+  return document.querySelector('#box-'+(tag==='24'?'24':'5')+' .toggle-btn');
+}
+function togglePwd(tag){
+  const inp = document.getElementById('key'+tag);
+  const btn = getToggleBtn(tag);
+  if(inp.type==='password'){ inp.type='text'; btn.innerText='Hide'; }
+  else                     { inp.type='password'; btn.innerText='Show';}
+}
+async function save(radio){
+  const tag = (radio==='radio0')?'24':'5';
+  const body = {
+    radio:   radio,
+    disabled: document.querySelector('input[name=en'+tag+']:checked').value,
+    ssid:    document.getElementById('ssid'+tag).value.trim(),
+    key:     document.getElementById('key' +tag).value
+  };
+  lockUI(true);
+  const r = await fetch('/dashboard/wireless/save',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body)});
+  const d = await r.json();
+  showMsg('msg-'+tag,d);
+  fakeProgress(()=>{ lockUI(false); fetchData(); });
+}
+function showMsg(id,o){
+  const el=document.getElementById(id); el.style.display='block';
+  el.className='msg '+(o.ok?'success':'error');
+  el.innerText = o.message||o.error||'Unknown';
+}
+function lockUI(lock){
+  document.querySelectorAll('input,button').forEach(el=>{ el.disabled = lock; });
+  document.getElementById('overlay').style.display = lock ? 'flex' : 'none';
+}
+function fakeProgress(cb){
+  const bar=document.getElementById('bar');
+  bar.style.width='0';
+  let pct=0;
+  const id=setInterval(()=>{
+      pct+=5;
+      bar.style.width=pct+'%';
+      if(pct>=100){ clearInterval(id); cb&&cb(); }
+  },200);
+}
+fetchData();
+</script>
