@@ -8,7 +8,7 @@ https://www.facebook.com/share/g/1BwqxXK6xa/
 
 <img width="770" height="622" alt="image" src="https://github.com/user-attachments/assets/7f9bfb75-c4ab-44ae-a988-5712887de9eb" />
 
-### تحميل التطبيق
+### تحميل التطبيق الترخيص المجاني
 
 [⬇️ تحميل التطبيق](https://github.com/abdulkader-alrezej/WanBlendr/releases/download/lic_generatore_free_wanblendr_361_371/lic2_old_WanBlendr_v361_v371.zip)
 
