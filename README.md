@@ -10,7 +10,7 @@ https://www.facebook.com/share/g/1BwqxXK6xa/
 
 ### تحميل التطبيق
 
-[⬇️ تحميل التطبيق](https://github.com/abdulkader-alrezej/WanBlendr/blob/main/WanBlendr_Source_Code_Full_09-05-2026/Lic_Free/lic2_old_WanBlendr_v361_v371.pyw)
+[⬇️ تحميل التطبيق](https://github.com/abdulkader-alrezej/WanBlendr/releases/download/lic_generatore_free_wanblendr_361_371/lic2_old_WanBlendr_v361_v371.zip)
 
 
 WanBlendr is a WAN load balancing and failover firmware based on OpenWrt using nftables.
