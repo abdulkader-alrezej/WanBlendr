@@ -1,0 +1,79 @@
+<style>
+    .info-container{margin:1rem auto;max-width:960px;padding:1rem 1.25rem;text-align:left;background:var(--bg-surface);
+        border-radius:var(--border-radius-base);box-shadow:var(--shadow-sm)}
+    .info-row{display:flex;align-items:center;justify-content:space-between;padding:.35rem 0;border-bottom:1px dashed var(--clr-gray-400);gap:12px}
+    .info-row:last-child{border-bottom:none}
+    .info-label{font-weight:600;min-width:150px;color:var(--text-color-heading)}
+    .info-value{color:var(--text-color);opacity:.95;overflow-wrap:anywhere}
+    .status-badge{display:inline-flex;align-items:center;gap:.35rem;padding:.2rem .6rem;border-radius:999px;border:1px solid currentColor;font-weight:700}
+    .status-ok {color:var(--clr-success)}
+    .status-not{color:var(--clr-danger)}
+    .license-input{display:grid;grid-template-columns:1fr auto;gap:8px;max-width:520px;margin-top:10px}
+    .license-input label{grid-column:1/-1;font-weight:600;color:var(--text-color-heading)}
+    .license-input input[type="text"]{width:100%;padding:.6rem .75rem;border:1px solid var(--clr-gray-400);border-radius:var(--border-radius-base);
+        background:var(--bg-elevated);color:var(--text-color);font-size:.95rem}
+    .license-input input[type="text"]::placeholder{color:var(--clr-gray-200)}
+    .license-input button{padding:.55rem 1rem;background-image:var(--gradient-primary);
+        border:none;border-radius:var(--border-radius-base);color:#fff;font-size:.95rem;height:100%;
+        cursor:pointer;background-size:200% 200%;transition:background-position var(--transition-base)}
+    .license-input button:hover{background-position:right center}
+    .license-export{padding:.5rem 1rem;background:var(--bg-elevated);border:1px solid var(--clr-gray-400);color:var(--text-color-heading);
+        border-radius:999px;cursor:pointer}
+    .license-export:hover{filter:brightness(1.05)}
+    .note-row{color:var(--clr-warning)}
+    .link-blue{color:var(--clr-info);text-decoration:underline}
+    .link-blue:hover{filter:brightness(1.2)}
+    @media (max-width:640px){
+        .info-label{min-width:120px}
+        .info-container{margin:.75rem .5rem;padding:.75rem}
+    }
+</style>
+<div class="info-container">
+    <div class="info-row note-row">
+        <span class="info-label">info:</span>
+        <span class="info-value">WAN Blendr&nbsp;New</span>
+    </div>
+    <div class="info-row"><span class="info-label">HW:</span><span class="info-value">%%HW_MODEL%%</span></div>
+    <div class="info-row"><span class="info-label">Machine:</span><span class="info-value">%%MACHINE_KEY%%</span></div>
+    <div class="info-row"><span class="info-label">ID:</span><span class="info-value">%%SYSTEM_ID%%</span></div>
+    <div class="info-row"><span class="info-label">Remaining Time:</span><span class="info-value">%%REMAINING_TIME%%</span></div>
+    <div class="info-row">
+        <span class="info-label">License Status:</span>
+        <span class="status-badge %%STATUS_CLASS%%">%%LICENSE_STATUS%%</span>
+    </div>
+    %%EXPORT_BLOCK%%
+    %%INPUT_BLOCK%%
+<div id="licenseMessage" style="margin-top:10px;"></div>
+</div>
+<script>
+document.getElementById('checkLicenseBtn')?.addEventListener('click', () => {
+    const k=document.getElementById('licenseKey').value.trim();
+    if(!k){alert('Please enter a Product key.');return;}
+    fetch('/dashboard/license/check',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({license_key:k})
+    })
+    .then(r=>r.json())
+    .then(d=>{
+        const m=document.getElementById('licenseMessage');
+        if(d.success){
+            m.innerHTML='<span style="color:green">'+d.message+'</span>';
+            setTimeout(()=>location.reload(),1500);
+        }else{
+            m.innerHTML='<span style="color:red">'+d.message+'</span>';
+        }
+    })
+    .catch(e=>console.error(e));
+});
+(function(){
+  const btn = document.getElementById('exportBtn');
+  if(btn){
+    btn.addEventListener('click', ()=>{
+      try{
+        window.location.href = '/dashboard/license/export?ts='+Date.now();
+      }catch(e){ console.error(e); }
+    });
+  }
+})();
+</script>

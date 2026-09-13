@@ -1,0 +1,9 @@
+تعليمات تشغيل تطبيق الترخيص على ويندوز:
+1. حمّل Python 3 لويندوز من الرابط المباشر:
+   https://www.python.org/downloads/windows/
+2. اختر Windows installer (64-bit). أثناء التثبيت، فعّل Add python.exe to PATH، واترك خيار tcl/tk and IDLE محددًا ... بعد انتهاء التنصيب اعد تشغيل ويندوز.
+3. ضع ملف البرنامج lic2_old_WanBlendr_v361_v371.pyw داخل مجلد في Documents او الرص C
+4. شغّل البرنامج بالنقر المزدوج. إذا لم يفتح، افتح Terminal داخل المجلد ونفّذ:
+py "lic2_old_WanBlendr_v361_v371.pyw"
+5. اضغط Choose file، واختر ملف الترخيص ZIP أو TXT، ثم اضغط Extract & Run.
+لا يحتاج التطبيق إلى حزم إضافية عبر pip، ويعمل دون إنترنت بعد تثبيت Python.

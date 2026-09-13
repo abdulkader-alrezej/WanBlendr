@@ -1,0 +1,239 @@
+<style>
+table{width:100%;border-collapse:collapse}
+th,td{border:1px solid var(--clr-gray-400);padding:8px;text-align:center;white-space:nowrap}
+th{background:linear-gradient(180deg, var(--clr-gray-600) 0%, var(--clr-gray-700) 100%);color:var(--text-color-heading)}
+.header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+:root{
+  --btn-add-bg:#0d6efd; --btn-add-fg:#fff; --btn-add-bg-h:#0b5ed7;
+  --btn-edit-bg:#17a2b8; --btn-edit-fg:#fff; --btn-edit-bg-h:#138496;
+  --btn-delete-bg:#dc3545; --btn-delete-fg:#fff; --btn-delete-bg-h:#bb2d3b;
+  --btn-save-bg:#198754; --btn-save-fg:#fff; --btn-save-bg-h:#157347;
+  --btn-cancel-bg:#6c757d; --btn-cancel-fg:#fff; --btn-cancel-bg-h:#5c636a;
+}
+.btn{display:inline-flex;align-items:center;justify-content:center;border:none;padding:6px 10px;cursor:pointer;border-radius:4px;font:inherit;line-height:1.2;transition:opacity .15s ease,transform .02s ease}
+.btn:active{transform:scale(.98)}
+.add-btn{background:var(--btn-add-bg);color:var(--btn-add-fg)}
+.add-btn:hover{background:var(--btn-add-bg-h)}
+.edit-btn{background:var(--btn-edit-bg);color:var(--btn-edit-fg)}
+.edit-btn:hover{background:var(--btn-edit-bg-h)}
+.delete-btn{background:var(--btn-delete-bg);color:var(--btn-delete-fg)}
+.delete-btn:hover{background:var(--btn-delete-bg-h)}
+.save-btn{background:var(--btn-save-bg);color:var(--btn-save-fg)}
+.save-btn:hover{background:var(--btn-save-bg-h)}
+.cancel-btn{background:var(--btn-cancel-bg);color:var(--btn-cancel-fg)}
+.cancel-btn:hover{background:var(--btn-cancel-bg-h)}
+.actions{display:flex;justify-content:center;gap:6px}
+.modal{display:none;position:fixed;z-index:9999;left:0;top:0;width:100%;height:100%;overflow:auto;background:rgba(0,0,0,.5)}
+.modal-content{background:var(--bg-elevated);margin:60px auto;padding:18px;width:560px;border-radius:6px;color:var(--text-color)}
+.modal-content h3{margin-top:0}
+.modal-content label{display:block;margin-bottom:6px}
+.modal-content input,.modal-content select{width:100%;margin-bottom:10px;padding:6px;background:var(--bg);color:var(--text-color);border:1px solid var(--clr-gray-400);border-radius:4px}
+.modal-buttons{display:flex;justify-content:flex-end;gap:10px}
+.error-msg{color:#c00;margin-bottom:10px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#progressBar{display:none;position:fixed;z-index:10000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,.5)}
+#progressBar .spinner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);border:8px solid #f3f3f3;border-top:8px solid #444;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+</style>
+<div class="header-row">
+  <button class="btn add-btn" id="dmzAddBtn">Add DMZ Rule</button>
+</div>
+<table id="dmz-table">
+  <thead>
+    <tr>
+      <th>Host (dest_ip)</th>
+      <th>Proto</th>
+      <th>Ports</th>
+      <th>Src→Dest</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+<div class="modal" id="addModal">
+  <div class="modal-content">
+    <h3>Add DMZ Rule</h3>
+    <div class="error-msg" id="addErr" style="display:none"></div>
+    <div class="row">
+      <div>
+        <label>Destination Host (IPv4)</label>
+        <input type="text" id="addDestIp" placeholder="192.168.1.100">
+      </div>
+      <div>
+        <label>Protocol</label>
+        <select id="addProto">
+          <option value="tcp udp">ALL (TCP+UDP)</option>
+          <option value="tcp">TCP</option>
+          <option value="udp">UDP</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Source Port(s)</label>
+        <input type="text" id="addSrcPort" placeholder="80 or 1000-2000">
+      </div>
+      <div>
+        <label>Destination Port(s)</label>
+        <input type="text" id="addDstPort" placeholder="80 or 1000-2000">
+      </div>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn save-btn" id="addSave">Save</button>
+      <button class="btn cancel-btn" id="addCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="modal" id="editModal">
+  <div class="modal-content">
+    <h3>Edit DMZ Rule</h3>
+    <div class="error-msg" id="editErr" style="display:none"></div>
+    <input type="hidden" id="editId">
+    <div class="row">
+      <div>
+        <label>Destination Host (IPv4)</label>
+        <input type="text" id="editDestIp">
+      </div>
+      <div>
+        <label>Protocol</label>
+        <select id="editProto">
+          <option value="tcp udp">ALL (TCP+UDP)</option>
+          <option value="tcp">TCP</option>
+          <option value="udp">UDP</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Source Port(s)</label>
+        <input type="text" id="editSrcPort">
+      </div>
+      <div>
+        <label>Destination Port(s)</label>
+        <input type="text" id="editDstPort">
+      </div>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn save-btn" id="editSave">Save</button>
+      <button class="btn cancel-btn" id="editCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+<div id="progressBar"><div class="spinner"></div></div>
+<script>
+const DMZ_DATA_URL   = '/dashboard/dmz/data';
+const DMZ_ADD_URL    = '/dashboard/dmz/add';
+const DMZ_EDIT_URL   = '/dashboard/dmz/edit';
+const DMZ_DELETE_URL = '/dashboard/dmz/delete';
+function $(id){ return document.getElementById(id); }
+async function loadTable(){
+  const r = await fetch(DMZ_DATA_URL, {cache:'no-store'});
+  if(!r.ok) return;
+  const j = await r.json();
+  const tb = document.querySelector('#dmz-table tbody');
+  tb.innerHTML = '';
+  (j.rules||[]).forEach(row=>{
+    const tr = document.createElement('tr');
+    const sd = (row.SrcZone||'wan') + '→' + (row.DestZone||'lan');
+    tr.innerHTML = `
+      <td>${row.Host}</td>
+      <td>${row.Proto}</td>
+      <td>${row.Ports||''}</td>
+      <td>${sd}</td>
+      <td class="actions">
+        <button class="btn edit-btn" onclick="editDMZ('${row.ID}')">Edit</button>
+        <button class="btn delete-btn" onclick="delDMZ('${row.ID}')">Delete</button>
+      </td>`;
+    tb.appendChild(tr);
+  });
+}
+function open(id){ $(id).style.display='block'; }
+function close(id){ $(id).style.display='none'; }
+function showErr(id, msg){ const el=$(id); el.textContent=msg||''; el.style.display=msg?'block':'none'; }
+document.addEventListener('DOMContentLoaded', async ()=>{
+  const overlay = $('progressBar');
+  await loadTable();
+  setInterval(loadTable, 5000);
+  $('dmzAddBtn').addEventListener('click', ()=>{
+    showErr('addErr','');
+    $('addDestIp').value = '';
+    $('addProto').value = 'tcp udp';
+    $('addSrcPort').value = '';
+    $('addDstPort').value = '';
+    open('addModal');
+  });
+  $('addCancel').addEventListener('click', ()=> close('addModal'));
+  $('addSave').addEventListener('click', async ()=>{
+    showErr('addErr',''); overlay.style.display='block';
+    try{
+      const body = {
+        dest_ip: $('addDestIp').value.trim(),
+        proto:   $('addProto').value,
+        src_dport: $('addSrcPort').value.trim(),
+        dest_port: $('addDstPort').value.trim()
+      };
+      const r = await fetch(DMZ_ADD_URL, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+      const j = await r.json();
+      if(!r.ok){ showErr('addErr', j.error||'Error'); }
+      else { close('addModal'); loadTable(); }
+    }catch(e){ showErr('addErr','Unexpected error'); }
+    finally{ overlay.style.display='none'; }
+  });
+  $('editCancel').addEventListener('click', ()=> close('editModal'));
+  $('editSave').addEventListener('click', async ()=>{
+    showErr('editErr',''); overlay.style.display='block';
+    try{
+      const body = {
+        id:        $('editId').value,
+        dest_ip:   $('editDestIp').value.trim(),
+        proto:     $('editProto').value,
+        src_dport: $('editSrcPort').value.trim(),
+        dest_port: $('editDstPort').value.trim()
+      };
+      const r = await fetch(DMZ_EDIT_URL, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+      const j = await r.json();
+      if(!r.ok){ showErr('editErr', j.error||'Error'); }
+      else { close('editModal'); loadTable(); }
+    }catch(e){ showErr('editErr','Unexpected error'); }
+    finally{ overlay.style.display='none'; }
+  });
+  window.editDMZ = async function(id){
+    showErr('editErr',''); overlay.style.display='block';
+    try{
+      const r = await fetch(DMZ_DATA_URL, {cache:'no-store'});
+      const j = await r.json();
+      const hit = (j.rules||[]).find(x=>x.ID===id);
+      if(!hit){ overlay.style.display='none'; return; }
+      $('editId').value = hit.ID;
+      $('editDestIp').value = hit.Host || '';
+      const p = (hit.Proto||'').toLowerCase();
+      $('editProto').value = (p==='all'||p==='tcp udp')?'tcp udp':p;
+      const ports = (hit.Ports||'');
+      if(ports.indexOf('→')>-1){
+        const parts = ports.split('→');
+        $('editSrcPort').value = (parts[0]||'').trim();
+        $('editDstPort').value = (parts[1]||'').trim();
+      }else{
+        $('editSrcPort').value = ports;
+        $('editDstPort').value = ports;
+      }
+      open('editModal');
+    }catch(_){}
+    finally{ overlay.style.display='none'; }
+  }
+  window.delDMZ = async function(id){
+    if(!confirm('Delete this rule?')) return;
+    overlay.style.display='block';
+    try{
+      const r = await fetch(DMZ_DELETE_URL, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id})});
+      const j = await r.json();
+      if(!r.ok){ alert(j.error||'Failed'); }
+      else { loadTable(); }
+    }finally{ overlay.style.display='none'; }
+  }
+  window.addEventListener('click', (e)=>{
+    if(e.target===$('addModal')) close('addModal');
+    if(e.target===$('editModal')) close('editModal');
+  });
+});
+</script>

@@ -1,0 +1,191 @@
+<style>
+:root{ }
+body{background:var(--bg-body);color:var(--text-color);font-family:var(--font-family-base);margin:0;padding:0 1rem 2rem}
+h1{margin:1rem 0 1.5rem;font-size:1.6rem;font-weight:600;color:var(--text-color-heading)}
+.set-row{display:flex;flex-wrap:wrap;gap:1.2rem;max-width:960px}
+.set-box{flex:1 1 280px;background:var(--bg-surface);padding:1rem 1.2rem 1.4rem;border-radius:8px;box-shadow:var(--shadow-sm);transition:background .2s;min-width:260px}
+.set-box:hover{background:var(--bg-elevated)}
+.set-box h2{margin:0 0 .8rem 0;font-size:1.15rem;color:var(--text-color-heading)}
+.set-box label{display:block;margin:.5rem 0 .25rem;font-size:.9rem}
+.set-box input[type=text], .set-box input[type=password]{width:100%;padding:.5rem .6rem;border:1px solid var(--clr-gray-400);border-radius:8px;background:var(--bg-elevated);color:var(--text-color);font-size:.9rem;outline:none}
+.set-box button{margin-top:.9rem;padding:.55rem 1.3rem;border:0;border-radius:8px;background-image:var(--gradient-primary);color:#fff;cursor:pointer;font-weight:500;transition:background-position .15s;background-size:200% 200%}
+.set-box button:hover{background-position:right center}
+.msg{padding:.55rem .7rem;border-radius:8px;margin:.4rem 0;font-size:.85rem;display:none}
+.msg.error{background:var(--clr-danger)}
+.msg.success{background:var(--clr-success)}
+.small{opacity:.8;font-size:.85rem}
+.hr{height:1px;background:var(--clr-gray-400);margin:1rem 0}
+.badge{display:inline-block;padding:.15rem .4rem;border:1px solid var(--clr-gray-400);border-radius:999px;font-size:.75rem;opacity:.8}
+.progress-wrap{display:flex;align-items:center;gap:.5rem;margin-top:.4rem}
+progress{width:220px;height:12px;border:1px solid var(--clr-gray-400);border-radius:999px;overflow:hidden;background:var(--bg-elevated)}
+progress::-webkit-progress-bar{background:var(--bg-elevated)}
+progress::-webkit-progress-value{background:var(--clr-primary, #655be6)}
+progress::-moz-progress-bar{background:var(--clr-primary, #655be6)}
+#fwPct{min-width:3ch;text-align:right}
+</style>
+<div class="set-row">
+  <div class="set-box" id="pw-box">
+    <h2>Change Password</h2>
+    <div id="pw-msg" class="msg"></div>
+    <label>Old Password:</label>
+    <input type="password" id="old_pw">
+    <label>New Password:</label>
+    <input type="password" id="new_pw">
+    <label>Confirm New Password:</label>
+    <input type="password" id="new_pw2">
+    <button onclick="savePassword()">Save Password</button>
+  </div>
+  <div class="set-box" id="port-box">
+    <h2>HTTP&nbsp;Port</h2>
+    <div id="port-msg" class="msg"></div>
+    <label>Port&nbsp;(1 – 9999):</label>
+    <input type="text" id="http_port" inputmode="numeric" pattern="[0-9]{1,4}">
+    <button onclick="savePort()">Save Port</button>
+    <div class="hr"></div>
+    <h2 style="margin-top:.25rem">Firmware Update (Online)</h2>
+    <div class="small" style="margin:.25rem 0 .5rem">Note: A valid license is required to update.</div>
+    <div style="display:flex; gap:.5rem; flex-wrap:wrap">
+      <button id="fwOnlineBtn" type="button">Update Online</button>
+    </div>
+    <div class="progress-wrap">
+      <progress id="fwProg" max="100" value="0"></progress>
+      <span id="fwPct" class="small">0%</span>
+    </div>
+    <div id="fwStatus" style="margin-top:.5rem; font-family:monospace;"></div>
+    <div id="fwWarn" class="small" style="margin-top:.5rem; color:var(--danger); display:none">Warning: This operation will erase all data and reboot the device.</div>
+    <div style="margin-top:.5rem">
+      <button id="fwConfirmBtn" type="button" style="display:none; background:#c0392b; border:0; border-radius:8px; color:#fff; padding:.55rem 1.3rem; cursor:pointer">Confirm</button>
+    </div>
+    
+  </div>
+</div>
+<script>
+(async function init(){
+  await fetchData();
+  const $ = (s)=>document.querySelector(s);
+  const st = $("#fwStatus");
+  const onlineBtn = $("#fwOnlineBtn");
+  const prog = $("#fwProg");
+  const pct  = $("#fwPct");
+  let polling = null;
+  const fwWarn = document.getElementById('fwWarn');
+  const fwConfirmBtn = document.getElementById('fwConfirmBtn');
+  
+  function setStatus(msg, ok=true){
+    st.textContent = msg || "";
+    st.style.color = ok ? "var(--success)" : "var(--danger)";
+  }
+  function setProgress(p){
+    const v = Math.max(0, Math.min(100, Math.round(p||0)));
+    prog.value = v;
+    pct.textContent = v + '%';
+  }
+  function resetProgress(){ setProgress(0); }
+  function toggleConfirm(show){
+    if (fwWarn) fwWarn.style.display = show ? 'block' : 'none';
+    if (fwConfirmBtn) fwConfirmBtn.style.display = show ? 'inline-block' : 'none';
+      }
+  onlineBtn.addEventListener("click", async () => {
+    if(onlineBtn.disabled) return;
+    try{
+      onlineBtn.disabled = true;
+      setProgress(0);
+      setStatus("Starting online update...");
+      toggleConfirm(false);
+      const res = await fetch("/dashboard/setting/update_online/start", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({})
+      });
+      const j = await res.json();
+      if(!res.ok || !j.ok){
+        setStatus(j.error || j.message || "Cannot start online update", false);
+        onlineBtn.disabled = false;
+        return;
+      }
+      if(polling) clearInterval(polling);
+      polling = setInterval(async ()=>{
+        try{
+          const r = await fetch("/dashboard/setting/update_online/status",{cache:"no-store"});
+          if(!r.ok) return;
+          const s = await r.json();
+          setProgress(s.progress||0);
+          
+          if(s.state === 'ready'){
+            setStatus("Download complete. Ready to upgrade.", true);
+            toggleConfirm(true);
+            clearInterval(polling);
+          }else if(s.state === 'downloading'){
+            setStatus("Downloading...");
+            toggleConfirm(false);
+          }else if(s.state === 'upgrading'){
+            setStatus("Upgrading... device will reboot.", true);
+            toggleConfirm(false);
+          }else if(s.state === 'idle'){
+            setStatus("Idle");
+            toggleConfirm(false);
+          }else if(s.state === 'error'){
+            setStatus(s.message || "Error", false);
+            clearInterval(polling);
+            onlineBtn.disabled = false;
+            toggleConfirm(false);
+          }
+        }catch(e){}
+      }, 1000);
+    }catch(e){
+      setStatus("Cannot start online update", false);
+      onlineBtn.disabled = false;
+    }
+  });
+  if (fwConfirmBtn){
+    fwConfirmBtn.addEventListener('click', async ()=>{
+      fwConfirmBtn.disabled = true;
+      try{
+        const r = await fetch('/dashboard/setting/update_online/confirm',{method:'POST',headers:{'Content-Type':'application/json'}});
+        const j = await r.json();
+        if(!r.ok || !j.ok){
+          setStatus(j.message || j.error || 'Failed to start upgrade', false);
+          fwConfirmBtn.disabled = false;
+        }else{
+          setStatus('Upgrading... device will reboot.', true);
+          toggleConfirm(false);
+        }
+      }catch(e){
+        setStatus('Unexpected error', false);
+        fwConfirmBtn.disabled = false;
+    }
+  });
+  }
+})();
+async function fetchData(){
+  const r = await fetch('/dashboard/setting/data');
+  const d = await r.json();
+  document.getElementById('http_port').value = d.current_port || '';
+}
+async function savePassword(){
+  const body = {
+    old_password:      document.getElementById('old_pw').value,
+    new_password:      document.getElementById('new_pw').value,
+    confirm_password:  document.getElementById('new_pw2').value
+  };
+  const r = await fetch('/dashboard/setting/change_password',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  });
+  const d = await r.json(); showMsg('pw-msg', d);
+}
+async function savePort(){
+  const body = { http_port: document.getElementById('http_port').value };
+  const r = await fetch('/dashboard/setting/save_port',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  });
+  const d = await r.json(); showMsg('port-msg', d);
+}
+function showMsg(id, obj){
+  const el = document.getElementById(id);
+  el.style.display = 'block';
+  el.className = 'msg ' + (obj.ok ? 'success' : 'error');
+  el.innerText = obj.message || obj.error || 'Unknown error';
+}
+</script>

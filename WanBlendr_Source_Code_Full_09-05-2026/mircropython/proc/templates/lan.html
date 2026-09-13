@@ -1,0 +1,267 @@
+<style>
+.table-container { margin-top: 1.25rem; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  background: var(--bg-surface);
+  color: var(--text-color);
+  font-family: monospace;
+}
+th, td {
+  border: 1px solid var(--clr-gray-400);
+  padding: 0.5rem 0.75rem;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+th {
+  background: linear-gradient(180deg, var(--clr-gray-600) 0%, var(--clr-gray-700) 100%);
+  color: var(--text-color-heading);
+}
+.action-btn {
+  color: #fff;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  border-radius: var(--border-radius-base, 6px);
+  transition: background-position 0.3s;
+  background-size: 200% 200%;
+  background-image: var(--gradient-primary);
+}
+.action-btn:hover { background-position: right center; }
+.top-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: .625rem; }
+.left-title { font-size: 1.125rem; font-weight: 700; }
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  inset: 0;
+  overflow: auto;
+  background-color: rgba(0,0,0,0.5);
+}
+.modal-content {
+  background: var(--bg-surface);
+  background-image: linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-elevated) 100%);
+  margin: 6rem auto;
+  padding: 1.25rem;
+  width: 360px;
+  border-radius: var(--border-radius-base, 6px);
+  color: var(--text-color-heading);
+  box-shadow: var(--shadow-lg, 0 12px 32px rgba(0,0,0,.4));
+}
+.modal-content h3 { margin-top: 0; }
+.modal-content label { display: block; margin-bottom: .25rem; }
+.modal-content select, .modal-content input {
+  width: 100%;
+  margin-bottom: .625rem;
+  padding: .5rem;
+  background: var(--bg-elevated);
+  color: var(--text-color);
+  border: 1px solid var(--clr-gray-400);
+  border-radius: var(--border-radius-base, 6px);
+}
+.modal-buttons { display: flex; justify-content: flex-end; gap: .625rem; }
+#progressOverlay {
+  display: none;
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  color: #fff;
+  text-align: center;
+}
+#progressOverlay .progress-content { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+.spinner {
+  border: 8px solid #f3f3f3;
+  border-top: 8px solid var(--clr-primary);
+  border-radius: 50%;
+  width: 60px; height: 60px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 0.9375rem auto;
+}
+@keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+</style>
+<div class="top-controls">
+  <div class="left-title">LAN Management</div>
+  <button class="action-btn" id="addBtn">Add</button>
+</div>
+<div class="table-container">
+  <table id="lanTable">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Interface</th>
+        <th>IP Address/CIDR</th>
+        <th>Netmask</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+<div class="modal" id="modalForm">
+  <div class="modal-content">
+    <h3 id="modalTitle">Add LAN</h3>
+    <input type="hidden" id="lanName">
+    <label>Interface:</label>
+    <select id="lanDevice"></select>
+    <label>IP Address / CIDR:</label>
+    <input type="text" id="lanIpCidr" placeholder="192.168.1.1/24">
+    <div class="modal-buttons">
+      <button class="action-btn" id="saveBtn">Save</button>
+      <button class="action-btn" id="cancelBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+<div id="progressOverlay">
+  <div class="progress-content">
+    <div class="spinner"></div>
+    <p>Processing...</p>
+  </div>
+</div>
+<script>
+const dataURL            = '/dashboard/lan/data';
+const addURL             = '/dashboard/lan/add';
+const editURL            = '/dashboard/lan/edit';
+const deleteURL          = '/dashboard/lan/delete';
+const interfacesListURL  = '/dashboard/lan/interfaces_list';
+let currentData = [];
+function showProgress() { document.getElementById('progressOverlay').style.display = 'block'; }
+function hideProgress() { document.getElementById('progressOverlay').style.display = 'none'; }
+function closeModal()   { document.getElementById('modalForm').style.display = 'none'; }
+function openModal(mode, rowData) {
+  const modal = document.getElementById('modalForm');
+  const title = document.getElementById('modalTitle');
+  const lanName = document.getElementById('lanName');
+  const lanDevice = document.getElementById('lanDevice');
+  const lanIpCidr = document.getElementById('lanIpCidr');
+  title.textContent = (mode === 'add') ? 'Add LAN' : 'Edit LAN';
+  if (mode === 'add') {
+    lanName.value = '';
+    lanDevice.value = '';
+    lanIpCidr.value = '';
+  } else if (rowData) {
+    lanName.value = rowData.name || '';
+    lanDevice.value = rowData.device || '';
+    lanIpCidr.value = rowData.ip_cidr || '';
+  }
+  modal.style.display = 'block';
+}
+async function loadTable() {
+  try {
+    const resp = await fetch(dataURL, { cache: 'no-store' });
+    const data = await resp.json();
+    currentData = Array.isArray(data) ? data : [];
+    renderTable();
+  } catch (e) {
+    alert('Failed to load table: ' + (e && e.message ? e.message : e));
+  }
+}
+function renderTable() {
+  const tbody = document.querySelector('#lanTable tbody');
+  tbody.innerHTML = '';
+  currentData.forEach(item => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${item.name || ''}</td>
+      <td>${item.device_label || ''}</td>
+      <td>${item.ip_cidr || ''}</td>
+      <td>${item.netmask || ''}</td>
+      <td>
+        <button class="action-btn" data-act="edit" data-name="${item.name}">Edit</button>
+        <button class="action-btn" data-act="del" data-name="${item.name}">Delete</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('button[data-act="edit"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = btn.getAttribute('data-name');
+      const row = currentData.find(x => x.name === name);
+      if (row) {
+        loadInterfacesList().then(() => openModal('edit', row));
+      }
+    });
+  });
+  tbody.querySelectorAll('button[data-act="del"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = btn.getAttribute('data-name');
+      onDelete(name);
+    });
+  });
+}
+async function loadInterfacesList() {
+  const sel = document.getElementById('lanDevice');
+  sel.innerHTML = '';
+  try {
+    const resp = await fetch(interfacesListURL, { cache: 'no-store' });
+    const arr = await resp.json();
+    (arr || []).forEach(dev => {
+      const opt = document.createElement('option');
+      opt.value = dev.value;
+      opt.textContent = dev.label;
+      sel.appendChild(opt);
+    });
+  } catch (e) {
+    alert('Failed to load interfaces: ' + (e && e.message ? e.message : e));
+  }
+}
+document.getElementById('addBtn').addEventListener('click', () => {
+  loadInterfacesList().then(() => openModal('add'));
+});
+document.getElementById('cancelBtn').addEventListener('click', closeModal);
+document.getElementById('saveBtn').addEventListener('click', async () => {
+  showProgress();
+  try {
+    const lanName   = (document.getElementById('lanName').value || '').trim();
+    const lanDevice = (document.getElementById('lanDevice').value || '').trim();
+    const lanIpCidr = (document.getElementById('lanIpCidr').value || '').trim();
+    const url = lanName ? editURL : addURL;
+    const payload = lanName ? { name: lanName, device: lanDevice, ip_cidr: lanIpCidr }
+                            : { device: lanDevice, ip_cidr: lanIpCidr };
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const result = await resp.json();
+    if (resp.ok && result && result.success) {
+      alert('Operation completed successfully!');
+      closeModal();
+      await loadTable();
+    } else {
+      alert((result && result.error) ? result.error : 'Operation failed.');
+    }
+  } catch (e) {
+    alert('Request error: ' + (e && e.message ? e.message : e));
+  } finally {
+    hideProgress();
+  }
+});
+async function onDelete(name) {
+  if (!name) return;
+  if (!confirm('Delete ' + name + '?')) return;
+  showProgress();
+  try {
+    const resp = await fetch(deleteURL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+    const result = await resp.json();
+    if (resp.ok && result && result.success) {
+      alert('Deleted successfully!');
+      await loadTable();
+    } else {
+      alert((result && result.error) ? result.error : 'Deletion failed.');
+    }
+  } catch (e) {
+    alert('Request error: ' + (e && e.message ? e.message : e));
+  } finally {
+    hideProgress();
+  }
+}
+window.addEventListener('DOMContentLoaded', loadTable);
+</script>

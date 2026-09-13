@@ -1,0 +1,46 @@
+<div class="login-container">
+  <div class="login-card">
+    <h1><span class="login-brand">Wan Blendr</span>&nbsp;<span id="login-ver" class="login-ver">ver.--</span></h1>
+    <form class="form-login" method="POST" action="/login">
+      <div class="input-row">
+        <span class="icon" aria-hidden="true">👤</span>
+        <input type="text" name="username" placeholder="Username" autocomplete="username" required />
+      </div>
+      <div class="input-row">
+        <span class="icon" aria-hidden="true">🔒</span>
+        <input type="password" name="password" placeholder="Password" autocomplete="current-password" required />
+      </div>
+      <button type="submit">Login</button>
+    </form>
+    <div class="telegram-link">
+                <span> Wan Blendr</span>
+    </div>
+    <div class="group-link">
+      <a class="group-inline" href="https://www.facebook.com/abdulkader.alrezej" target="_blank" rel="noopener noreferrer">
+        <span class="icon" aria-hidden="true">👨‍💻</span>
+        <span>Dev: Abdulkader Alrezej</span>
+      </a>
+    </div>
+    <div class="group-link">
+      <div class="group-label">Community</div>
+      <a class="group-inline" href="https://www.facebook.com/groups/techtechtech1" target="_blank" rel="noopener noreferrer">
+        <span class="icon" aria-hidden="true">🔗</span>
+        <span>Join our Facebook group</span>
+      </a>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var el = document.getElementById('login-ver');
+  if(!el) return;
+  fetch('/dashboard/version',{cache:'no-store'})
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){
+      if(!j) return;
+      var v = String(j.version || '').trim();
+      if(v){ el.textContent = 'ver.' + v; }
+    })
+    .catch(function(){});
+})();
+</script>

@@ -1,0 +1,144 @@
+#!/bin/sh
+# WanBlendr v1.0
+# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: © 2025 Abdulkader Alrezej <abdulkader.alrezej@gmail.com> (Facebook: https://www.facebook.com/abdulkader.alrezej)
+
+set -e
+
+CFG=/etc/config/wanblendr
+log() { logger -t wanblendr-route-apply "$*"; }
+
+file_list_secs() {
+
+  awk '
+    $1=="config" && $2=="wan" {g=$3; gsub(/'\''|"/,"",g); print g}
+  ' "$CFG" 2>/dev/null || true
+}
+
+file_get_opt() {
+
+  awk -v S="$1" -v O="$2" '
+    $1=="config" && $2=="wan" {
+      g=$3; gsub(/'\''|"/,"",g); in=(g==S); next
+    }
+    in && $1=="option" && $2==O {
+      v=$3; sub(/^'\''|^"/,"",v); sub(/'\''$|"$/, "", v); print v; exit
+    }
+  ' "$CFG" 2>/dev/null || true
+}
+
+get_secs() {
+  secs="$(uci -q show wanblendr | sed -n "s/^wanblendr\.\(wan[^=]*\)=wan/\1/p" || true)"
+  [ -n "$secs" ] && { echo "$secs"; return 0; }
+
+  file_list_secs
+  return 0
+}
+
+get_opt() {
+
+  val="$(uci -q get wanblendr.$1.$2 2>/dev/null || true)"
+  [ -n "$val" ] && { echo "$val"; return 0; }
+  file_get_opt "$1" "$2"
+  return 0
+}
+
+add_ip_rule() {
+  MARK="$1"; TBL="$2"; PRI="$3"
+  LMARK="$(printf '%s' "$MARK" | tr 'A-Z' 'a-z')"
+  while ip -o rule show | awk -v IGNORECASE=1 -v m="$LMARK" -v t="$TBL" \
+        '$0 ~ ("fwmark " m) && $0 ~ ("lookup " t) {print $1}' | tr -d : | read pr; do
+    ip rule del priority "$pr" 2>/dev/null || \
+    ip rule del fwmark "$MARK" lookup "$TBL" 2>/dev/null || \
+    ip rule del fwmark "$MARK" table  "$TBL"  2>/dev/null || true
+  done
+  if ip -o rule show | awk -v IGNORECASE=1 -v m="$LMARK" -v t="$TBL" \
+        '$0 ~ ("fwmark " m) && $0 ~ ("lookup " t) {exit 0} END{exit 1}'; then
+    return 0
+  fi
+  ip rule add fwmark "$MARK" lookup "$TBL" priority "$PRI" 2>/dev/null && return 0
+  ip rule add fwmark "$MARK" table  "$TBL" priority "$PRI" 2>/dev/null && return 0
+  ip rule add fwmark "$MARK" lookup "$TBL" 2>/dev/null && return 0
+  ip rule add fwmark "$MARK" table  "$TBL"  2>/dev/null && return 0
+  return 1
+}
+
+apply_one() {
+  sec="$1"
+  IFNAME="$(get_opt "$sec" ifname)"
+  MARK="$(get_opt "$sec" mark)"
+  TBL="$(get_opt "$sec" table)"
+  [ -z "$IFNAME" ] || [ -z "$MARK" ] || [ -z "$TBL" ] && { log "skip $sec (missing ifname/mark/table)"; return 0; }
+
+  DEV="$(ifstatus "$IFNAME" 2>/dev/null | jsonfilter -e @.l3_device)"
+  [ -z "$DEV" ] && DEV="$IFNAME"
+
+  GW="$(ifstatus "$IFNAME" | jsonfilter -e '@.route[@.target="0.0.0.0"].nexthop' 2>/dev/null)"
+  [ -z "$GW" ] && GW="$(ip -4 route show dev "$DEV" | awk "/^default via /{print \\$3; exit}")"
+
+  ip route flush table "$TBL" 2>/dev/null || true
+  if [ -n "$GW" ] && [ -n "$DEV" ]; then
+    ip route replace default via "$GW" dev "$DEV" table "$TBL" proto static
+    log "table $TBL: default via $GW dev $DEV (sec=$sec if=$IFNAME)"
+  else
+    log "table $TBL: no GW/DEV yet (sec=$sec IF=$IFNAME DEV=$DEV GW=$GW)"
+  fi
+
+  [ -n "$DEV" ] && sysctl -w "net.ipv4.conf.$DEV.rp_filter=0" >/dev/null 2>&1 || true
+
+  PRI=$((10000 + ${TBL:-0}))
+  if add_ip_rule "$MARK" "$TBL" "$PRI"; then
+    log "ip rule ok: fwmark $MARK -> table $TBL (prio $PRI)"
+  else
+    log "FAILED to add ip rule: fwmark $MARK -> table $TBL"
+  fi
+}
+
+down_one() {
+  sec="$1"
+  MARK="$(get_opt "$sec" mark)"
+  TBL="$(get_opt "$sec" table)"
+  [ -z "$TBL" ] || [ -z "$MARK" ] && { log "down $sec: missing mark/table"; return 0; }
+  ip route flush table "$TBL" 2>/dev/null || true
+  while ip rule show | grep -q "fwmark $MARK .* lookup $TBL"; do
+    ip rule del fwmark $MARK lookup $TBL priority $((10000+TBL)) 2>/dev/null || \
+    ip rule del fwmark $MARK table  $TBL priority $((10000+TBL)) 2>/dev/null || \
+    ip rule del fwmark $MARK lookup $TBL 2>/dev/null || \
+    ip rule del fwmark $MARK table  $TBL 2>/dev/null || true
+  done
+  log "down $sec: flushed table $TBL and removed rules for mark $MARK"
+}
+
+case "$1" in
+  --all)
+    SECS="$(get_secs)"
+    log "sections: $(echo "$SECS" | xargs echo)"
+    for s in $SECS; do apply_one "$s"; done
+    ;;
+  --ifup)
+    arg="$2"
+    for s in $(get_secs); do
+      [ "$s" = "$arg" ] && { apply_one "$s"; exit 0; }
+    done
+    for s in $(get_secs); do
+      [ "$(get_opt "$s" ifname)" = "$arg" ] && { apply_one "$s"; exit 0; }
+    done
+    log "ifup: '$arg' not in wanblendr config"
+    ;;
+  --ifdown)
+    arg="$2"
+    for s in $(get_secs); do
+      [ "$s" = "$arg" ] && { down_one "$s"; exit 0; }
+    done
+    for s in $(get_secs); do
+      [ "$(get_opt "$s" ifname)" = "$arg" ] && { down_one "$s"; exit 0; }
+    done
+    log "ifdown: '$arg' not in wanblendr config"
+    ;;
+  *)
+    echo "Usage: $0 --all | --ifup <wan-section|ifname> | --ifdown <wan-section|ifname>" >&2
+    exit 2
+    ;;
+esac
+
+exit 0
