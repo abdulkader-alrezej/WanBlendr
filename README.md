@@ -6,7 +6,7 @@ https://www.facebook.com/share/g/1BwqxXK6xa/
 
 ## ملفات GPL
 
-[https://youtu.be/FpxlKgpxi7o](https://github.com/abdulkader-alrezej/WanBlendr_2026/releases)
+https://github.com/abdulkader-alrezej/WanBlendr_2026/releases
 
 ## شرح الترخيص المجاني للنظام القديم:
 
