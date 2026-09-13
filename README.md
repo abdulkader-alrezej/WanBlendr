@@ -4,6 +4,14 @@ https://www.facebook.com/share/g/1BwqxXK6xa/
 
 # WanBlendr & WanBlendrPlus-GPL-OpenWrt
 
+## ملفات GPL
+
+[https://youtu.be/FpxlKgpxi7o](https://github.com/abdulkader-alrezej/WanBlendr_2026/releases)
+
+## شرح الترخيص المجاني للنظام القديم:
+
+https://youtu.be/FpxlKgpxi7o
+
 ### واجهة تفعيل التطبيق للنظام القديم WanBlendr و لا يوجد مجاني لـ Plus
 
 <img width="770" height="622" alt="image" src="https://github.com/user-attachments/assets/7f9bfb75-c4ab-44ae-a988-5712887de9eb" />
